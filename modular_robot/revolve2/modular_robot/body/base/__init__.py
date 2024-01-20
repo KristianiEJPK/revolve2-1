@@ -6,6 +6,7 @@ from ._body import Body
 from ._brick import Brick
 from ._core import Core
 from ._imu_sensor import IMUSensor
+from ._camera_sensor import CameraSensor
 
 __all__ = [
     "ActiveHinge",
@@ -15,4 +16,5 @@ __all__ = [
     "Brick",
     "Core",
     "IMUSensor",
+    "CameraSensor"
 ]

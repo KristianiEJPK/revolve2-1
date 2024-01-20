@@ -3,6 +3,7 @@ from revolve2.modular_robot.sensor_state import (
     ActiveHingeSensorState,
     IMUSensorState,
     ModularRobotSensorState,
+    CameraSensorState,
 )
 
 from .._uuid_key import UUIDKey
@@ -47,6 +48,14 @@ class ModularRobotSensorStateImplV2(ModularRobotSensorState):
         Get the state of the provided IMU sensor.
 
         :param sensor: The sensor.
+        :raises NotImplementedError: Always.
+        """
+        raise NotImplementedError()
+
+    def get_camera_sensor_state(self) -> CameraSensorState:
+        """
+        Get the state of the camera sensor.
+
         :raises NotImplementedError: Always.
         """
         raise NotImplementedError()
