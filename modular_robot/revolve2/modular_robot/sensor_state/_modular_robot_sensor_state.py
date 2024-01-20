@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
 from ..body.base import ActiveHingeSensor, IMUSensor
-from . import CameraSensorState
 from ._active_hinge_sensor_state import ActiveHingeSensorState
+from ._camera_sensor_state import CameraSensorState
 from ._imu_sensor_state import IMUSensorState
 
 

@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 from PIL import Image
 
 from ..._modular_robot_control_interface import ModularRobotControlInterface
-from ...sensor_state import ModularRobotSensorState
+from ...sensor_state._modular_robot_sensor_state import ModularRobotSensorState
 from ._brain_cpg_instance import BrainCpgInstance
 
 
