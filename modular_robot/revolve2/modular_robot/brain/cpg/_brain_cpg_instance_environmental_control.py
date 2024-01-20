@@ -23,7 +23,9 @@ class BrainCpgInstanceEnvironmentalControl(BrainCpgInstance):
     ) -> None:
         """
         Control the modular robot.
+
         Sets the active hinge targets to the values in the state array as defined by the mapping provided in the constructor.
+
         :param dt: Elapsed seconds since last call to this function.
         :param sensor_state: Interface for reading the current sensor state.
         :param control_interface: Interface for controlling the robot.
@@ -58,7 +60,12 @@ class BrainCpgInstanceEnvironmentalControl(BrainCpgInstance):
                 )
 
     @staticmethod
-    def __get_image():
+    def __get_image() -> NDArray[np.float_]:
+        """
+        Get the image.
+
+        :return: The image.
+        """
         with NamedTemporaryFile(suffix=".jpeg") as tmp_file:
             file_name = tmp_file.name
             call(
@@ -66,5 +73,5 @@ class BrainCpgInstanceEnvironmentalControl(BrainCpgInstance):
                 shell=True,
             )
             pil_image = Image.open(file_name)
-        image: NDArray[np.int_] = np.asarray(pil_image)
+        image: NDArray[np.float_] = np.asarray(pil_image)
         return image

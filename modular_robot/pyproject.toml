@@ -26,6 +26,8 @@ packages = [{ include = "revolve2" }]
 python = "^3.10,<3.12"
 numpy = "^1.21.2"
 pyrr = "^0.10.3"
+Pillow = "^10.1.0"
+types-Pillow = "^10.2.0.20240111"
 
 [tool.poetry.extras]
 dev = []

@@ -12,6 +12,7 @@ class CameraSensorState(ABC):
     def image(self) -> NDArray[np.int_]:
         """
         Get the current image.
+
         :returns: The image.
         """
         pass

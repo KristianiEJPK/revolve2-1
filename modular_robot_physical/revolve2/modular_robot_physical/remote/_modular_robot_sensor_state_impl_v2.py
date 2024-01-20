@@ -1,9 +1,9 @@
 from revolve2.modular_robot.body.base import ActiveHingeSensor, IMUSensor
 from revolve2.modular_robot.sensor_state import (
     ActiveHingeSensorState,
+    CameraSensorState,
     IMUSensorState,
     ModularRobotSensorState,
-    CameraSensorState,
 )
 
 from .._uuid_key import UUIDKey

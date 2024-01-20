@@ -4,9 +4,9 @@ from ._active_hinge_sensor import ActiveHingeSensor
 from ._attachment_face import AttachmentFace
 from ._body import Body
 from ._brick import Brick
+from ._camera_sensor import CameraSensor
 from ._core import Core
 from ._imu_sensor import IMUSensor
-from ._camera_sensor import CameraSensor
 
 __all__ = [
     "ActiveHinge",
@@ -14,7 +14,7 @@ __all__ = [
     "AttachmentFace",
     "Body",
     "Brick",
+    "CameraSensor",
     "Core",
     "IMUSensor",
-    "CameraSensor"
 ]

@@ -12,6 +12,7 @@ class CameraSensor:
     def uuid(self) -> uuid.UUID:
         """
         Get the uuid.
+
         :returns: The uuid.
         """
         return self._uuid
