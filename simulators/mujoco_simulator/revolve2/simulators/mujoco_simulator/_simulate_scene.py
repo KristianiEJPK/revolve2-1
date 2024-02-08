@@ -56,7 +56,6 @@ def simulate_scene(
             model,
             data,
             start_paused=start_paused,
-            render_every_frame=False,
         )
 
     if record_settings is not None:

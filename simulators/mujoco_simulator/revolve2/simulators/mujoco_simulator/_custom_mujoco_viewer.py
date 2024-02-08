@@ -59,11 +59,7 @@ class CustomMujocoViewer(mujoco_viewer.MujocoViewer):  # type: ignore
         super().__init__(
             model,
             data,
-            mode="window",
             title="custom-mujoco-viewer",
-            width=None,
-            height=None,
-            hide_menus=False,
         )
         self._viewer_mode = mode
         self._position = 0
@@ -191,16 +187,14 @@ class CustomMujocoViewer(mujoco_viewer.MujocoViewer):  # type: ignore
         :param action: The Action.
         :param mods: The Mods.
         """
-        super()._key_callback(window, key, scancode, action, mods)
-        if action != glfw.RELEASE:
-            if key == glfw.KEY_LEFT_ALT:
-                self._hide_menus = False
-        else:
+        if action == glfw.RELEASE:
             match key:
                 case glfw.KEY_K:  # Increment cycle position
                     self._increment_position()
                 case _:
                     pass
+
+        super()._key_callback(window, key, scancode, action, mods)
 
     def render(self) -> int | None:
         """

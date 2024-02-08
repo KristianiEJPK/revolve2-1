@@ -7,6 +7,7 @@ from revolve2.simulation.simulator import Batch, Simulator
 
 from ._simulate_manual_scene import simulate_manual_scene
 from ._simulate_scene import simulate_scene
+from ._simulate_scenes_mjx import simulate_scenes_mjx
 
 
 class LocalSimulator(Simulator):
@@ -18,6 +19,7 @@ class LocalSimulator(Simulator):
     _cast_shadows: bool
     _fast_sim: bool
     _manual_control: bool
+    _gpu_acceleration: bool
 
     def __init__(
         self,
@@ -27,6 +29,7 @@ class LocalSimulator(Simulator):
         cast_shadows: bool = False,
         fast_sim: bool = False,
         manual_control: bool = False,
+        gpu_acceleration: bool = False,
     ):
         """
         Initialize this object.
@@ -37,6 +40,7 @@ class LocalSimulator(Simulator):
         :param cast_shadows: Whether shadows are cast in the simulation.
         :param fast_sim: Whether more complex rendering prohibited.
         :param manual_control: Whether the simulation should be controlled manually.
+        :param gpu_acceleration: Whether GPU acceleration should be used (mujoco-mjx).
         """
         assert (
             headless or num_simulators == 1
@@ -52,6 +56,7 @@ class LocalSimulator(Simulator):
         self._cast_shadows = cast_shadows
         self._fast_sim = fast_sim
         self._manual_control = manual_control
+        self._gpu_acceleration = gpu_acceleration
 
     def simulate_batch(self, batch: Batch) -> list[list[SimulationState]]:
         """
@@ -61,8 +66,6 @@ class LocalSimulator(Simulator):
         :returns: List of simulation states in ascending order of time.
         :raises Exception: If manual control is selected, but headless is enabled.
         """
-        logging.info("Starting simulation batch with MuJoCo.")
-
         control_step = 1.0 / batch.parameters.control_frequency
         sample_step = (
             None
@@ -70,23 +73,60 @@ class LocalSimulator(Simulator):
             else 1.0 / batch.parameters.sampling_frequency
         )
 
-        if batch.record_settings is not None:
-            os.makedirs(batch.record_settings.video_directory, exist_ok=False)
+        if self._gpu_acceleration:
+            os.environ["XLA_FLAGS"] = f"--xla_force_host_platform_device_count={os.cpu_count()}"
+            assert not self._manual_control and self._headless, "MJX does not support manual control and Previews."
+            assert batch.record_settings is None, "Recording is not supported in MJX"
+            logging.info("Starting simulation batch with MuJoCo-MJX.")
 
-        if self._manual_control:
-            if self._headless:
-                raise Exception("Manual control only works with rendered simulations.")
-            for scene in batch.scenes:
-                simulate_manual_scene(scene=scene)
-            return [[]]
+            results = simulate_scenes_mjx(
+                scenes=batch.scenes,
+                control_step=control_step,
+                sample_step=sample_step,
+                simulation_time=batch.parameters.simulation_time,
+                simulation_timestep=batch.parameters.simulation_timestep,
+                cast_shadows=self._cast_shadows,
+                fast_sim=self._fast_sim,
+            )
 
-        if self._num_simulators > 1:
-            with concurrent.futures.ProcessPoolExecutor(
-                max_workers=self._num_simulators
-            ) as executor:
-                futures = [
-                    executor.submit(
-                        simulate_scene,
+        else:
+            logging.info("Starting simulation batch with MuJoCo.")
+
+            if batch.record_settings is not None:
+                os.makedirs(batch.record_settings.video_directory, exist_ok=False)
+
+            if self._manual_control:
+                if self._headless:
+                    raise Exception("Manual control only works with rendered simulations.")
+                for scene in batch.scenes:
+                    simulate_manual_scene(scene=scene)
+                return [[]]
+
+            if self._num_simulators > 1:
+                with concurrent.futures.ProcessPoolExecutor(
+                    max_workers=self._num_simulators
+                ) as executor:
+                    futures = [
+                        executor.submit(
+                            simulate_scene,
+                            scene_index,
+                            scene,
+                            self._headless,
+                            batch.record_settings,
+                            self._start_paused,
+                            control_step,
+                            sample_step,
+                            batch.parameters.simulation_time,
+                            batch.parameters.simulation_timestep,
+                            self._cast_shadows,
+                            self._fast_sim,
+                        )
+                        for scene_index, scene in enumerate(batch.scenes)
+                    ]
+                    results = [future.result() for future in futures]
+            else:
+                results = [
+                    simulate_scene(
                         scene_index,
                         scene,
                         self._headless,
@@ -101,24 +141,6 @@ class LocalSimulator(Simulator):
                     )
                     for scene_index, scene in enumerate(batch.scenes)
                 ]
-                results = [future.result() for future in futures]
-        else:
-            results = [
-                simulate_scene(
-                    scene_index,
-                    scene,
-                    self._headless,
-                    batch.record_settings,
-                    self._start_paused,
-                    control_step,
-                    sample_step,
-                    batch.parameters.simulation_time,
-                    batch.parameters.simulation_timestep,
-                    self._cast_shadows,
-                    self._fast_sim,
-                )
-                for scene_index, scene in enumerate(batch.scenes)
-            ]
 
         logging.info("Finished batch.")
 
