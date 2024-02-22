@@ -55,20 +55,26 @@ class AttachmentFaceCoreV2(AttachmentFace):
         |                 |            |                  |
         ---------------------------------------------------
         """
+        # Initialize attachment points
         attachment_points = {}
         rot = Quaternion.from_eulers([0.0, 0.0, face_rotation])
+        
+        # For all 9 attachment points
         for i in range(9):
+            # Horizontal offset
             h_o = (i % 3 - 1) * horizontal_offset
+            # Vertical offset
             v_o = -(i // 3 - 1) * vertical_offset
-
+            # Adapt horizontal offset
             h_o = h_o if int(rot.angle / np.pi) % 2 == 0 else -h_o
+            # Set offset
             offset = (
                 Vector3([0.0, h_o, v_o])
                 if np.isclose(rot.angle % np.pi, 0)
                 else Vector3([h_o, 0.0, v_o])
             )
             offset = rot * offset
-
+            # Create attachment point
             attachment_points[i] = AttachmentPoint(
                 orientation=rot, offset=self._child_offset + offset
             )
@@ -77,7 +83,7 @@ class AttachmentFaceCoreV2(AttachmentFace):
     def can_set_child(
         self,
         module: Module,
-        child_index: int,
+        child_index: int, flag: str = "condition"
     ) -> bool:
         """
         Check for conflicts when adding a new attachment point.
@@ -86,18 +92,50 @@ class AttachmentFaceCoreV2(AttachmentFace):
 
         :param module: The module.
         :param child_index: The index of the attachment point.
+        :flag: The flag to determine if the function should perform the action ("perform") or just check for the condition ("condition").
         :return: Whether conflicts occurred.
         """
+        # Copy the check matrix
         check_matrix = self._check_matrix.copy()
-        check_matrix[(child_index - 1) % 3, (child_index - 1) // 3] += 1
+        # Turn 0 into 1
+        row = int(np.floor(child_index / 3))
+        col = int(child_index - (row * 3))
+        check_matrix[row, col] += 1
+        
         conv_check = np.zeros(shape=(2, 2), dtype=np.uint8)
         for i, j in product(range(2), repeat=2):
-            conv_check[i, j] = np.sum(check_matrix[i : i + 1, j : j + 1])
+            conv_check[i, j] = np.sum(check_matrix[i : (i + 2), j : (j + 2)])
 
-        if np.max(conv_check) > 1:  # Conflict detected.
-            return False
-        self._check_matrix = check_matrix
-        return True
+        if flag == "condition":
+            if child_index == 0:
+                slots2close = [1, 3, 4]
+            elif child_index == 1:
+                slots2close = [0, 2, 3, 4, 5]
+            elif child_index == 2:
+                slots2close = [1, 4, 5]
+            elif child_index == 3:
+                slots2close = [0, 1, 4, 6, 7]
+            elif child_index == 4:
+                slots2close = [0, 1, 2, 3, 5, 6, 7, 8]
+            elif child_index == 5:
+                slots2close = [1, 2, 4, 7, 8]
+            elif child_index == 6:
+                slots2close = [3, 4, 7]
+            elif child_index == 7:
+                slots2close = [3, 4, 5, 6, 8]
+            elif child_index == 8:
+                slots2close = [4, 5, 7]
+            
+            if np.max(conv_check) > 1:  # Conflict detected.
+                return False, slots2close
+            else: return True, slots2close
+        elif flag == "perform":
+            self._check_matrix = check_matrix
+            if np.max(conv_check) > 1:  # Conflict detected.
+                return False
+            else:
+                return True
+        else: raise ValueError("Incorrect flag")
 
     @property
     def top_left(self) -> Module | None:

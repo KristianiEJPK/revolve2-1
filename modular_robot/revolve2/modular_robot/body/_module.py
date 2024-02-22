@@ -119,7 +119,14 @@ class Module:
         ), "Child module already connected to a different slot."
         module._parent = self
         module._parent_child_index = child_index
-        if self.is_free(child_index) and self.can_set_child(module, child_index):
+        # Can we set the child --> i.e. is the attachment point within the free space?
+        try:
+            bool_child = self.can_set_child(module, child_index, flag = "perform")
+        except TypeError:
+            bool_child = self.can_set_child(module, child_index)
+        
+        # Is the attachment point also not occupied?
+        if self.is_free(child_index) and bool_child:
             self._children[child_index] = module
         else:
             raise KeyError("Attachment point already populated")

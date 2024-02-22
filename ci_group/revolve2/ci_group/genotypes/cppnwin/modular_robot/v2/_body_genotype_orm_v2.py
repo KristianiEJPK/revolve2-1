@@ -107,13 +107,13 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
             )
         )
 
-    def develop_body(self) -> BodyV2:
+    def develop_body(self: object, querying_seed = int) -> BodyV2:
         """
         Develop the genotype into a modular robot.
 
         :returns: The created robot.
         """
-        return develop(self.body)
+        return develop(self.body, querying_seed)
 
 
 @event.listens_for(BodyGenotypeOrmV2, "before_update", propagate=True)
@@ -124,7 +124,7 @@ def _update_serialized_body(
     target: BodyGenotypeOrmV2,
 ) -> None:
     target._serialized_body = target.body.Serialize()
-
+    pass
 
 @event.listens_for(BodyGenotypeOrmV2, "load", propagate=True)
 def _deserialize_body(target: BodyGenotypeOrmV2, context: orm.QueryContext) -> None:

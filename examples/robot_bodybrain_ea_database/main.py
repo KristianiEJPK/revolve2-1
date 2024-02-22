@@ -129,7 +129,7 @@ def run_experiment(dbengine: Engine) -> None:
         session.commit()
 
     # Intialize the evaluator that will be used to evaluate robots.
-    evaluator = Evaluator(headless=True, num_simulators=config.NUM_SIMULATORS)
+    evaluator = Evaluator(headless=True, num_simulators = config.NUM_SIMULATORS)
 
     # CPPN innovation databases.
     innov_db_body = multineat.InnovationDatabase()
@@ -145,6 +145,8 @@ def run_experiment(dbengine: Engine) -> None:
         )
         for _ in range(config.POPULATION_SIZE)
     ]
+    
+    # Mapping seed inbouwen...
 
     # Evaluate the initial population.
     logging.info("Evaluating initial population.")
