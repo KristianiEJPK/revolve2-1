@@ -23,6 +23,8 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2, BrainGenotypeCpgOrm, BodyMappingS
         innov_db_body: multineat.InnovationDatabase,
         innov_db_brain: multineat.InnovationDatabase,
         rng: np.random.Generator,
+        zdirection: bool, include_bias: bool, include_chain_length: bool,
+        include_empty: bool,
     ) -> Genotype:
         """
         Goal:
@@ -32,14 +34,19 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2, BrainGenotypeCpgOrm, BodyMappingS
             innov_db_body: Multineat innovation database for the body. See Multineat library.
             innov_db_brain: Multineat innovation database for the brain. See Multineat library.
             rng: Random number generator for CPPN.
+            zdirection: Whether to include the z direction  as input for CPPN.
+            include_bias: Whether to include the bias  as input for CPPN.
+            include_chain_length: Whether to include the chain length as input for CPPN.
+            include_empty: Whether to include the empty module output  as input for CPPN
         -------------------------------------------------------------------------------------------
         Output:
             The created genotype: (base class sqlalchemy, hashid sqlalchemy, body genotype, brain
                 genotype, mapping seed).
         """
         # Set random body and brain
-        body = cls.random_body(innov_db_body, rng)
-        brain = cls.random_brain(innov_db_brain, rng)
+        body = cls.random_body(innov_db_body, rng, zdirection, include_bias, include_chain_length,
+                               include_empty)
+        brain = cls.random_brain(innov_db_brain, rng, include_bias)
 
         # Set random mapping seed
         mapping_seed = rng.integers(0, 2 ** 32)
@@ -103,7 +110,7 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2, BrainGenotypeCpgOrm, BodyMappingS
 
         return Genotype(body=body.body, brain=brain.brain, mapping_seed = mapping_seed)
 
-    def develop(self) -> ModularRobot:
+    def develop(self, include_bias) -> ModularRobot:
         """
         Goal:
             Develop the genotype into a modular robot.
@@ -111,12 +118,13 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2, BrainGenotypeCpgOrm, BodyMappingS
         Input:
             self: The genotype to develop (base class sqlalchemy, hashid sqlalchemy, body genotype,
                 brain genotype, mapping seed).
+            include_bias: Whether to include the bias as input for CPPN.
         -------------------------------------------------------------------------------------------
         Output:
             The created robot: ModularRobot.
         """
         # Develop body and brain
-        body = self.develop_body(querying_seed = self.mapping_seed)
-        brain = self.develop_brain(body = body)
+        body = self.develop_body(querying_seed = self.mapping_seed) # Deze nog
+        brain = self.develop_brain(body = body, include_bias = include_bias) # Deze al gedaan!
 
         return ModularRobot(body = body, brain = brain)

@@ -26,7 +26,7 @@ def main() -> None:
         rows = ses.execute(
             select(Genotype, Individual.fitness)
             .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
-            .order_by(Individual.fitness.desc()).limit(100)
+            .order_by(Individual.fitness.desc()).limit(200)
         ).fetchall() #.one()
         #assert row is not None
         
@@ -34,12 +34,14 @@ def main() -> None:
         genotype = row[0]
         fitness = row[1]
 
-        modular_robot = genotype.develop()
+        modular_robot = genotype.develop(include_bias = config.CPPNBIAS)
 
         logging.info(f"Best fitness: {fitness}")
 
         # Create the evaluator.
-        evaluator = Evaluator(headless=False, num_simulators=1)
+        evaluator = Evaluator(headless = False, num_simulators = 1, terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
+                              simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY,
+                              simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY)
 
         # Show the robot.
         evaluator.evaluate([modular_robot])

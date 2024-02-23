@@ -14,18 +14,26 @@ def multiple_unique(
     selection_function: Callable[[list[TIndividual], list[TFitness]], int],
 ) -> npt.NDArray[np.float_]:
     """
-    Select multiple distinct individuals from a population using the provided selection function.
-
-    :param selection_size: Amount of of individuals to select.
-    :param population: List of individuals to select from.
-    :param fitnesses: Fitnesses of the population.
-    :param selection_function: Function that select a single individual from a population. ([TIndividual], [TFitness]) -> index.
-    :returns: Indices of the selected individuals.
+    Goal:
+        Select multiple distinct individuals from a population using the provided selection function.
+    -------------------------------------------------------------------------------------------
+    Input:
+        selection_size: Amount of of individuals to select.
+        population: List of individuals to select from.
+        fitnesses: Fitnesses of the population.
+        selection_function: Function that select a single individual from a population. ([TIndividual], [TFitness]) -> index.
+    -------------------------------------------------------------------------------------------
+    Output:
+        Indices of the selected individuals.
     """
-    assert len(population) == len(fitnesses)
-    assert selection_size <= len(population)
+    # Assertment statements
+    assert len(population) == len(fitnesses), "Population and fitnesses must have the same length."
+    assert selection_size <= len(population), "Selection size must be smaller or equal to the population size."
 
+    # Initialize
     selected_individuals = []
+
+    # Select individuals
     for _ in range(selection_size):
         new_individual = False
         while new_individual is False:

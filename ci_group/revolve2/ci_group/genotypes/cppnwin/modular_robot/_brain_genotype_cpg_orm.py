@@ -14,16 +14,21 @@ from .._random_multineat_genotype import random_multineat_genotype
 from ._brain_cpg_network_neighbor_v1 import BrainCpgNetworkNeighborV1
 from ._multineat_params import get_multineat_params
 
+# Multineat parameters
 _MULTINEAT_PARAMS = get_multineat_params()
 
 
 class BrainGenotypeCpgOrm(orm.MappedAsDataclass, kw_only=True):
-    """An SQLAlchemy model for a CPPNWIN cpg brain genotype."""
+    """Goal:
+        An SQLAlchemy model for a CPPNWIN cpg brain genotype."""
 
-    _NUM_INITIAL_MUTATIONS = 5
+    # Initial number of mutations
+    _NUM_INITIAL_MUTATIONS = 10
 
+    # Brain genotype
     brain: multineat.Genome
 
+    # Serialized brain
     _serialized_brain: orm.Mapped[str] = orm.mapped_column(
         "serialized_brain", init=False, nullable=False
     )
@@ -33,22 +38,35 @@ class BrainGenotypeCpgOrm(orm.MappedAsDataclass, kw_only=True):
         cls,
         innov_db: multineat.InnovationDatabase,
         rng: np.random.Generator,
+        include_bias: bool,
     ) -> BrainGenotypeCpgOrm:
         """
-        Create a random genotype.
-
-        :param innov_db: Multineat innovation database. See Multineat library.
-        :param rng: Random number generator.
-        :returns: The created genotype.
+        Goal:
+            Create a random genotype.
+        -------------------------------------------------------------------------------------------
+        Input:
+            innov_db: Multineat innovation database. See Multineat library.
+            rng: Random number generator.
+            include_bias: Whether to include the bias as input for CPPN.
+        -------------------------------------------------------------------------------------------
+        Output:
+            The created genotype.
         """
+        # Create a multineat rng and seed it with the numpy rng state
         multineat_rng = multineat_rng_from_random(rng)
 
+        # Number of Inputs
+        ninputs = 6 # x1, y1, z1, x2, y2, z2
+        if include_bias: # bias(always 1) 
+            ninputs += 1
+
+        # Create a random brain
         brain = random_multineat_genotype(
             innov_db=innov_db,
             rng=multineat_rng,
             multineat_params=_MULTINEAT_PARAMS,
             output_activation_func=multineat.ActivationFunction.SIGNED_SINE,
-            num_inputs=7,  # bias(always 1), x1, y1, z1, x2, y2, z2
+            num_inputs = ninputs,
             num_outputs=1,  # weight
             num_initial_mutations=cls._NUM_INITIAL_MUTATIONS,
         )
@@ -108,14 +126,19 @@ class BrainGenotypeCpgOrm(orm.MappedAsDataclass, kw_only=True):
             )
         )
 
-    def develop_brain(self, body: Body) -> BrainCpgNetworkNeighborV1:
+    def develop_brain(self, body: Body, include_bias: bool) -> BrainCpgNetworkNeighborV1:
         """
-        Develop the genotype into a modular robot.
-
-        :param body: The body to develop the brain for.
-        :returns: The created robot.
+        Goal:
+            Develop the genotype into a modular robot.
+        -------------------------------------------------------------------------------------------
+        Input:
+            body: The body to develop the brain
+            include_bias: Whether to include the bias as input for CPPN.
+        -------------------------------------------------------------------------------------------
+        Output:
+            The created robot brain
         """
-        return BrainCpgNetworkNeighborV1(genotype=self.brain, body=body)
+        return BrainCpgNetworkNeighborV1(genotype=self.brain, body=body, include_bias=include_bias)
 
 
 @event.listens_for(BrainGenotypeCpgOrm, "before_update", propagate=True)

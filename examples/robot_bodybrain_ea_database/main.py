@@ -26,22 +26,30 @@ def select_parents(
     rng: np.random.Generator,
     population: Population,
     offspring_size: int,
+    Nparents: int,
+    parent_tournament_size: int,
 ) -> npt.NDArray[np.float_]:
     """
-    Select pairs of parents using a tournament.
-
-    :param rng: Random number generator.
-    :param population: The population to select from.
-    :param offspring_size: The number of parent pairs to select.
-    :returns: Pairs of indices of selected parents. offspring_size x 2 ints.
+    Goal:
+        Select pairs of parents using a tournament.
+    -------------------------------------------------------------------------------------------
+    Input:
+        rng: Random number generator.
+        population: The population to select from.
+        offspring_size: The number of parent pairs to select.
+        Nparents: The number of parents to select.
+        parent_tournament_size: The size of the tournament to select parents.
+    -------------------------------------------------------------------------------------------
+    Output:
+        Pairs of indices of selected parents. offspring_size x 2 ints.
     """
     return np.array(
         [
             selection.multiple_unique(
-                2,
+                Nparents,
                 [individual.genotype for individual in population.individuals],
                 [individual.fitness for individual in population.individuals],
-                lambda _, fitnesses: selection.tournament(rng, fitnesses, k=1),
+                lambda _, fitnesses: selection.tournament(rng, fitnesses, k = parent_tournament_size),
             )
             for _ in range(offspring_size)
         ],
@@ -52,15 +60,21 @@ def select_survivors(
     rng: np.random.Generator,
     original_population: Population,
     offspring_population: Population,
+    survivor_tournament_size: int,
 ) -> Population:
     """
-    Select survivors using a tournament.
-
-    :param rng: Random number generator.
-    :param original_population: The population the parents come from.
-    :param offspring_population: The offspring.
-    :returns: A newly created population.
+    Goal:
+        Select survivors using a tournament.
+    -------------------------------------------------------------------------------------------
+    Input:
+        rng: Random number generator.
+        original_population: The population the parents come from.
+        offspring_population: The offspring.
+    -------------------------------------------------------------------------------------------
+    Output: 
+        A newly created population.
     """
+
     original_survivors, offspring_survivors = population_management.steady_state(
         [i.genotype for i in original_population.individuals],
         [i.fitness for i in original_population.individuals],
@@ -70,7 +84,7 @@ def select_survivors(
             n,
             genotypes,
             fitnesses,
-            lambda _, fitnesses: selection.tournament(rng, fitnesses, k=2),
+            lambda _, fitnesses: selection.tournament(rng, fitnesses, k = survivor_tournament_size),
         ),
     )
 
@@ -96,11 +110,15 @@ def find_best_robot(
     current_best: Individual | None, population: list[Individual]
 ) -> Individual:
     """
-    Return the best robot between the population and the current best individual.
-
-    :param current_best: The current best individual.
-    :param population: The population.
-    :returns: The best individual.
+    Goal:
+        Return the best robot between the population and the current best individual.
+    -------------------------------------------------------------------------------------------
+    Input:
+        current_best: The current best individual.
+        population: The population.
+    -------------------------------------------------------------------------------------------
+    Output:
+        The best individual.
     """
     return max(
         population + [] if current_best is None else [current_best],
@@ -110,48 +128,53 @@ def find_best_robot(
 
 def run_experiment(dbengine: Engine) -> None:
     """
-    Run an experiment.
-
-    :param dbengine: An openened database with matching initialize database structure.
+    Goal:
+        Run an experiment.
+    -------------------------------------------------------------------------------------------
+    Input:
+        dbengine: An openened database with matching initialize database structure.
     """
     logging.info("----------------")
     logging.info("Start experiment")
 
-    # Set up the random number generator.
+    # ---- Set up the random number generator.
     rng_seed = seed_from_time()
     rng = make_rng(rng_seed)
 
-    # Create and save the experiment instance.
+    # ---- Create and save the experiment instance.
     experiment = Experiment(rng_seed=rng_seed)
     logging.info("Saving experiment configuration.")
     with Session(dbengine) as session:
         session.add(experiment)
         session.commit()
 
-    # Intialize the evaluator that will be used to evaluate robots.
-    evaluator = Evaluator(headless=True, num_simulators = config.NUM_SIMULATORS)
+    # ---- Intialize the evaluator that will be used to evaluate robots.
+    evaluator = Evaluator(headless=True, num_simulators = config.NUM_SIMULATORS, 
+                          terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
+                          simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY, 
+                          simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY)
 
-    # CPPN innovation databases.
+    # ---- CPPN innovation databases.
     innov_db_body = multineat.InnovationDatabase()
     innov_db_brain = multineat.InnovationDatabase()
 
-    # Create an initial population.
+    # ---- Create an initial population.
     logging.info("Generating initial population.")
     initial_genotypes = [
         Genotype.random(
             innov_db_body=innov_db_body,
             innov_db_brain=innov_db_brain,
-            rng=rng,
+            rng=rng, zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
+            include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
+
         )
         for _ in range(config.POPULATION_SIZE)
     ]
     
-    # Mapping seed inbouwen...
-
     # Evaluate the initial population.
     logging.info("Evaluating initial population.")
     initial_fitnesses = evaluator.evaluate(
-        [genotype.develop() for genotype in initial_genotypes]
+        [genotype.develop(include_bias = config.CPPNBIAS) for genotype in initial_genotypes],
     )
 
     # Create a population of individuals, combining genotype with fitness.
@@ -181,7 +204,7 @@ def run_experiment(dbengine: Engine) -> None:
         )
 
         # Create offspring.
-        parents = select_parents(rng, population, config.OFFSPRING_SIZE)
+        parents = select_parents(rng, population, config.OFFSPRING_SIZE, config.NPARENTS, config.PARENT_TOURNAMENT_SIZE)
         offspring_genotypes = [
             Genotype.crossover(
                 population.individuals[parent1_i].genotype,
@@ -193,7 +216,7 @@ def run_experiment(dbengine: Engine) -> None:
 
         # Evaluate the offspring.
         offspring_fitnesses = evaluator.evaluate(
-            [genotype.develop() for genotype in offspring_genotypes]
+            [genotype.develop(include_bias = config.CPPNBIAS) for genotype in offspring_genotypes]
         )
 
         # Make an intermediate offspring population.
@@ -208,7 +231,7 @@ def run_experiment(dbengine: Engine) -> None:
         population = select_survivors(
             rng,
             population,
-            offspring_population,
+            offspring_population, config.SURVIVOR_TOURNAMENT_SIZE
         )
 
         # Make it all into a generation and save it to the database.

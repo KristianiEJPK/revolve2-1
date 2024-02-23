@@ -16,13 +16,18 @@ from ._body_develop import develop
 
 
 class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
-    """SQLAlchemy model for a CPPNWIN body genotype."""
+    """Goal:
+        SQLAlchemy model for a CPPNWIN body genotype."""
 
-    _NUM_INITIAL_MUTATIONS = 5
+    # Initial number of mutations
+    _NUM_INITIAL_MUTATIONS = 10
+    # Multineat parameters
     _MULTINEAT_PARAMS = get_multineat_params()
 
+    # Body genotype
     body: multineat.Genome
 
+    # Serialized body
     _serialized_body: orm.Mapped[str] = orm.mapped_column(
         "serialized_body", init=False, nullable=False
     )
@@ -32,23 +37,49 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
         cls,
         innov_db: multineat.InnovationDatabase,
         rng: np.random.Generator,
+        zdirection: bool, include_bias: bool, include_chain_length: bool,
+        include_empty: bool,
     ) -> BodyGenotypeOrmV2:
         """
-        Create a random genotype.
-
-        :param innov_db: Multineat innovation database. See Multineat library.
-        :param rng: Random number generator.
-        :returns: The created genotype.
+        Goal:
+            Create a random genotype.
+        -------------------------------------------------------------------------------------------
+        Input:
+            innov_db: Multineat innovation database. See Multineat library.
+            rng: Random number generator.
+            zdirection: Whether to include the z direction  as input for CPPN.
+            include_bias: Whether to include the bias as input for CPPN.
+            include_chain_length: Whether to include the chain length as input for CPPN.
+            include_empty: Whether to include the empty module output for CPPN.
+        -------------------------------------------------------------------------------------------
+        Output:
+            The created genotype.
         """
+        # Create a multineat rng and seed it with the numpy rng state
         multineat_rng = multineat_rng_from_random(rng)
 
+        # Number of inputs
+        num_inputs = 2 # pos_x, pos_y
+        if zdirection: # pos_z
+            num_inputs += 1 
+        if include_bias: # bias(always 1)
+            num_inputs += 1
+        if include_chain_length: # chain_length
+            num_inputs += 1
+
+        # Number of outputs
+        num_outputs = 4 # brick, activehinge, rot0, rot90
+        if include_empty:
+            num_outputs += 1
+
+        # Create a random body
         body = random_multineat_genotype(
             innov_db=innov_db,
             rng=multineat_rng,
             multineat_params=cls._MULTINEAT_PARAMS,
             output_activation_func=multineat.ActivationFunction.TANH,
-            num_inputs=5,  # bias(always 1), pos_x, pos_y, pos_z, chain_length
-            num_outputs=5,  # empty, brick, activehinge, rot0, rot90
+            num_inputs = num_inputs,
+            num_outputs = num_outputs,
             num_initial_mutations=cls._NUM_INITIAL_MUTATIONS,
         )
 

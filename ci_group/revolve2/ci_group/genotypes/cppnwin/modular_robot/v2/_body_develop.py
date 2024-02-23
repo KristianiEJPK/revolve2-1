@@ -24,6 +24,8 @@ class __Module:
     forward: Vector3[np.int_]
     up: Vector3[np.int_]
     chain_length: int
+    module_type: object
+    rotation_index: int
     module_reference: Module
 
 def develop(
@@ -78,7 +80,7 @@ def develop(
                 core_position,
                 Vector3([1, 0, 0]),
                 Vector3([0, 0, 1]),
-                0, attachment_face,))
+                0, "Core", 0, attachment_face,))
 
     # ---- Explore all attachment points for development --> recursive
     explored_modules = {}
@@ -191,18 +193,18 @@ def __evaluate_cppn(
     # assert isinstance(
     #     x, np.int64
     # ), f"Error: The position is not of type int. Type: {type(x)}."
-    body_net.Input([1.0, x, y, z, chain_length])  # 1.0 is the bias input
+    body_net.Input([x, y, z])
     body_net.ActivateAllLayers()
     outputs = body_net.Output()
 
     # get module type from output probabilities
     type_probs = list(outputs[:3])
     types = [None, BrickV2, ActiveHingeV2]
-    module_type = types[type_probs.index(min(type_probs))]
+    module_type = types[type_probs.index(max(type_probs))]
 
     # get rotation from output probabilities
-    rotation_probs = list(outputs[3:5])
-    rotation_index = rotation_probs.index(min(rotation_probs))
+    rotation_probs = list(outputs[2:4])
+    rotation_index = rotation_probs.index(max(rotation_probs))
 
     return module_type, rotation_index
 
@@ -263,23 +265,29 @@ def __add_child(
     # plt.show()
     
     # ---- Get new position including the attachment point offset --> Why an int?
-    if not bool_core:
-        rotate_off = np.array(__rotate(attachment_point.offset, module.up, attachment_point.orientation))
-        rotate_off = Vector3(np.where(rotate_off != 0, np.sign(rotate_off) * 0.5, 0))
-    else: # For core we already corrected the position completely by switching from a 3 x 3 x 3 core to a 1 x 1 x 1 core
-        rotate_off = 0
-    new_pos = np.array(position + rotate_off, dtype=np.int64)#np.array(np.round(position + rotate_off), dtype=np.int64)
+    # if not bool_core:
+    #     rotate_off = np.array(__rotate(attachment_point.offset, module.up, attachment_point.orientation))
+    #     rotate_off = Vector3(np.where(rotate_off != 0, np.sign(rotate_off) * 0.5, 0))
+    # else: # For core we already corrected the position completely by switching from a 3 x 3 x 3 core to a 1 x 1 x 1 core
+    #     rotate_off = 0
+    #new_pos = np.array(position + rotate_off, dtype=np.int64)#np.array(np.round(position + rotate_off), dtype=np.int64)
+    new_pos = position
 
     # ---- Evaluate CPPN
-    child_type, child_rotation = __evaluate_cppn(body_net, new_pos, chain_length)
-    angle = child_rotation * (np.pi / 2.0)
+    child_type, child_rotation_index = __evaluate_cppn(body_net, new_pos, chain_length)
+    
+    # ---- Adapt rotation
+    if (child_type == BrickV2) and (module.module_type == ActiveHingeV2) and (module.rotation_index == 1):
+        # inverts it no absolute rotation
+        child_rotation_index = 1
+    angle = child_rotation_index * (np.pi / 2.0) # Index is 0 | 1 --> 0 pi | 0.5 pi
 
     # ---- Is setting the child possible?
     bool_None = (child_type is None)
     if bool_None: # Empty block is queried --> No child can be set
         bool_set_child = False
     else:
-        # .....?
+        # Here we call the queried module type to get the desired type of module and rotation
         child = child_type(angle)
         # Here we need an exception as for the core module the function is different!
         try:
@@ -304,6 +312,8 @@ def __add_child(
         forward,
         up,
         chain_length,
+        child_type,
+        child_rotation_index,
         child,
     ), slots2close  
 
