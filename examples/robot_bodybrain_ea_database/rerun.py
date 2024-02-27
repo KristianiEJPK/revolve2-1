@@ -34,7 +34,11 @@ def main() -> None:
         genotype = row[0]
         fitness = row[1]
 
-        modular_robot = genotype.develop(include_bias = config.CPPNBIAS)
+        modular_robot = genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
+            include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
+            max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
+            mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
+            mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL)
 
         logging.info(f"Best fitness: {fitness}")
 

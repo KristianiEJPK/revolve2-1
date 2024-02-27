@@ -79,13 +79,15 @@ class BrainGenotypeCpgOrm(orm.MappedAsDataclass, kw_only=True):
         rng: np.random.Generator,
     ) -> BrainGenotypeCpgOrm:
         """
-        Mutate this genotype.
-
-        This genotype will not be changed; a mutated copy will be returned.
-
-        :param innov_db: Multineat innovation database. See Multineat library.
-        :param rng: Random number generator.
-        :returns: A mutated copy of the provided genotype.
+        Goal:
+            Mutate this genotype. This genotype will not be changed; a mutated copy will be returned.
+        -------------------------------------------------------------------------------------------
+        Input:
+            innov_db: Multineat innovation database. See Multineat library.
+            rng: Random number generator.
+        -------------------------------------------------------------------------------------------
+        Output:
+            A mutated copy of the provided genotype.
         """
         multineat_rng = multineat_rng_from_random(rng)
 
@@ -107,12 +109,16 @@ class BrainGenotypeCpgOrm(orm.MappedAsDataclass, kw_only=True):
         rng: np.random.Generator,
     ) -> BrainGenotypeCpgOrm:
         """
-        Perform crossover between two genotypes.
-
-        :param parent1: The first genotype.
-        :param parent2: The second genotype.
-        :param rng: Random number generator.
-        :returns: A newly created genotype.
+        Goal:
+            Perform crossover between two genotypes.
+        -------------------------------------------------------------------------------------------
+        Input:
+            parent1: The first genotype.
+            parent2: The second genotype.
+            rng: Random number generator.
+        -------------------------------------------------------------------------------------------
+        Output:
+            A newly created genotype.
         """
         multineat_rng = multineat_rng_from_random(rng)
 

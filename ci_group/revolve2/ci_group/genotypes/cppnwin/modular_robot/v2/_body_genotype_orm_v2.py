@@ -91,13 +91,16 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
         rng: np.random.Generator,
     ) -> BodyGenotypeOrmV2:
         """
-        Mutate this genotype.
-
-        This genotype will not be changed; a mutated copy will be returned.
-
-        :param innov_db: Multineat innovation database. See Multineat library.
-        :param rng: Random number generator.
-        :returns: A mutated copy of the provided genotype.
+        Goal:
+            Mutate this genotype. This genotype will not be changed; a mutated copy will be returned.
+        -------------------------------------------------------------------------------------------
+        Input:
+            self: The genotype to mutate.
+            innov_db: Multineat innovation database. See Multineat library.
+            rng: Random number generator.
+        -------------------------------------------------------------------------------------------
+        Output:
+            A mutated copy of the provided genotype.
         """
         multineat_rng = multineat_rng_from_random(rng)
 
@@ -119,13 +122,18 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
         rng: np.random.Generator,
     ) -> BodyGenotypeOrmV2:
         """
-        Perform crossover between two genotypes.
-
-        :param parent1: The first genotype.
-        :param parent2: The second genotype.
-        :param rng: Random number generator.
-        :returns: A newly created genotype.
+        Goal:
+            Perform crossover between two genotypes.
+        -------------------------------------------------------------------------------------------
+        Input:
+            parent1: The first genotype.
+            parent2: The second genotype.
+            rng: Random number generator for CPPN.
+        -------------------------------------------------------------------------------------------
+        Output:
+            A newly created genotype.
         """
+        # Get a multineat rng and seed it with the numpy rng state
         multineat_rng = multineat_rng_from_random(rng)
 
         return BodyGenotypeOrmV2(
@@ -138,13 +146,21 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
             )
         )
 
-    def develop_body(self: object, querying_seed = int) -> BodyV2:
+    def develop_body(self: object, querying_seed: int, zdirection: bool, include_bias: bool, 
+                     include_chain_length: bool, include_empty: bool, max_parts: int, 
+                     mode_collision: bool, mode_core_mult: bool, mode_slots4face: bool,
+                    mode_slots4face_all: bool, mode_not_vertical: bool) -> BodyV2:
         """
         Develop the genotype into a modular robot.
 
         :returns: The created robot.
         """
-        return develop(self.body, querying_seed)
+        return develop(self.body, querying_seed, zdirection = zdirection, 
+                                 include_bias = include_bias, include_chain_length = include_chain_length,
+                                 include_empty = include_empty, max_parts = max_parts,
+                                 mode_collision = mode_collision, mode_core_mult = mode_core_mult,
+                                 mode_slots4face = mode_slots4face, mode_slots4face_all = mode_slots4face_all,
+                                 mode_not_vertical = mode_not_vertical)
 
 
 @event.listens_for(BodyGenotypeOrmV2, "before_update", propagate=True)

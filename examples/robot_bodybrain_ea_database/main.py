@@ -174,7 +174,12 @@ def run_experiment(dbengine: Engine) -> None:
     # Evaluate the initial population.
     logging.info("Evaluating initial population.")
     initial_fitnesses = evaluator.evaluate(
-        [genotype.develop(include_bias = config.CPPNBIAS) for genotype in initial_genotypes],
+        [genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
+            include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
+            max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
+            mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
+            mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL
+            ) for genotype in initial_genotypes],
     )
 
     # Create a population of individuals, combining genotype with fitness.
@@ -209,14 +214,19 @@ def run_experiment(dbengine: Engine) -> None:
             Genotype.crossover(
                 population.individuals[parent1_i].genotype,
                 population.individuals[parent2_i].genotype,
-                rng,
-            ).mutate(innov_db_body, innov_db_brain, rng)
+                rng, config.CROSSOVER_PROBABILITY	
+            ).mutate(innov_db_body, innov_db_brain, rng, config.MUTATION_PROBABILITY)
             for parent1_i, parent2_i in parents
         ]
 
         # Evaluate the offspring.
         offspring_fitnesses = evaluator.evaluate(
-            [genotype.develop(include_bias = config.CPPNBIAS) for genotype in offspring_genotypes]
+            [genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
+            include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
+            max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
+            mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
+            mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL
+            ) for genotype in offspring_genotypes]
         )
 
         # Make an intermediate offspring population.
@@ -244,7 +254,6 @@ def run_experiment(dbengine: Engine) -> None:
         with Session(dbengine, expire_on_commit=False) as session:
             session.add(generation)
             session.commit()
-
 
 def main() -> None:
     """Run the program."""

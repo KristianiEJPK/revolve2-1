@@ -15,10 +15,17 @@ from revolve2.modular_robot.body.v2 import ActiveHingeV2, BodyV2, BrickV2
 
 @dataclass
 class __Module:
-    """"position: The position of the module.
+    """"Goal:
+        Class to hold some values for the functions in this file.
+    ----------------------------------------------------------------------
+    Input:
+        position: The position of the module.
         forward: Identifies what the forward direction is for the module.
         up: Identifies what the up direction is for the module.
         chain_length: The distance (in blocks) from the core.
+        module_type: The type of the module.
+        rotation_index: The index of the rotation.
+        _absolute_rotation: The absolute rotation index of the module.
         module_reference: The module."""
     position: Vector3[np.int_]
     forward: Vector3[np.int_]
@@ -26,31 +33,55 @@ class __Module:
     chain_length: int
     module_type: object
     rotation_index: int
+    _absolute_rotation: int
     module_reference: Module
 
+# Have to check the coordinate system!!!!
+    
 def develop(
-    genotype: multineat.Genome, querying_seed: int
+    genotype: multineat.Genome, querying_seed: int, zdirection: bool, 
+        include_bias: bool, include_chain_length: bool, include_empty: bool,
+        max_parts: int, mode_collision: bool, mode_core_mult: bool, 
+        mode_slots4face: bool, mode_slots4face_all: bool, mode_not_vertical: bool
 ) -> BodyV2:
     """
-    Develop a CPPNWIN genotype into a modular robot body.
-
-    It is important that the genotype was created using a compatible function.
-
-    :param genotype: The genotype to create the body from.
-    :returns: The create body.
-    """
+    Goal:
+        Develop a CPPNWIN genotype into a modular robot body. It is important that the genotype was created using 
+        a compatible function.
+    -------------------------------------------------------------------------------------------------------------
+    Input:
+        genotype: The genotype to create the body from.
+        querying_seed: The seed for the random number generator.
+        zdirection: Whether to include the z direction as input for CPPN.
+        include_bias: Whether to include the bias as input for CPPN.
+        include_chain_length: Whether to include the chain length as input for CPPN.
+        include_empty: Whether to include the empty module output for CPPN.
+        max_parts: Maximum number of parts in the body.
+        mode_collision: Whether to stop if collision occurs.
+        mode_core_mult: Whether to allow multiple core slots.
+        mode_slots4face: Whether multiple slots can be used for a single face for the core module.
+        mode_slots4face_all: Whether slots can be set for all 9 attachments, or only 3, 4, 5.
+        mode_not_vertical: Whether to disable vertical expansion of the body.
+    -------------------------------------------------------------------------------------------------------------
+    Output:
+        The createD body."""
     # ---- Initialize
     # Modifiable parameters
-    max_parts = 20 # Maximum number of parts in the body --> better pass as parameter????
-    part_count = 0 # Number of body parts
-    mode_collision = True # Whether to stop if collision occurs
-    mode_slots4face = True # Whether multiple slots can be used for a single face for the core module
-    mode_slots4face_all = False # Whether slots can be set for all 9 attachments, or only 3, 4, 5
-    mode_not_vertical = True # Whether to disable vertical expansion of the body
+    # max_parts = 20 # Maximum number of parts in the body --> better pass as parameter???? 
+    
+    # mode_collision = True # Whether to stop if collision occurs
+    # mode_core_mult = False # Whether to allow multiple core slots
+    # mode_slots4face = False # Whether multiple slots can be used for a single face for the core module
+    # mode_slots4face_all = False # Whether slots can be set for all 9 attachments, or only 3, 4, 5
+    # mode_not_vertical = True # Whether to disable vertical expansion of the body
+
+
     # Internal parameters
     rng = random.Random(querying_seed)
     collision = False # If the body has collided with itself
+    part_count = 0 # Number of body parts
     to_explore = [] # The modules which can be explored for adding more modules. Each item is a module's specific attachment face
+    explored_modules = {} # The modules which have been explored already
     
     # ---- CPPN
     # Initialize cppn
@@ -63,33 +94,42 @@ def develop(
     # Initialize body
     body = BodyV2() # Get body, which only contains the core right now
     v2_core = body.core_v2
-    # Set core position, which is in the middle of the 3 x 3 x 3 core block
-    core_position = Vector3([max_parts + 2, max_parts + 2, max_parts + 2], dtype=np.int_)
+    # Set core position
+    if mode_core_mult:
+        # 3 x 3 x 3 core block
+        core_position = Vector3([max_parts + 2, max_parts + 2, max_parts + 2], dtype = np.int_)
+    else:
+        core_position = Vector3([max_parts + 1, max_parts + 1, max_parts + 1], dtype = np.int_)
     # Increase body part count
     part_count += 1
 
-    # Initialize grid --> 3 x 3 x 3 block for core instead of 1 x 1 x 1
-    grid = np.zeros(shape=(max_parts * 2 + 3, max_parts * 2 + 3, max_parts * 2 + 3), dtype=np.uint8)
-    grid[max_parts + 1:max_parts + 4, max_parts + 1:max_parts + 4, max_parts + 1:max_parts + 4] = 1
-    assert np.sum(grid) == (3**3), f"Error: The core is not placed correctly in the grid. Sum: {np.sum(grid)}."
+    # Initialize grid
+    if mode_core_mult:
+        # 3 x 3 x 3 block for core instead of 1 x 1 x 1
+        grid = np.zeros(shape=(max_parts * 2 + 3, max_parts * 2 + 3, max_parts * 2 + 3), dtype=np.uint8)
+        grid[max_parts + 1:max_parts + 4, max_parts + 1:max_parts + 4, max_parts + 1:max_parts + 4] = 1
+        assert np.sum(grid) == (3**3), f"Error: The core is not placed correctly in the grid. Sum: {np.sum(grid)}."
+    else:
+        grid = np.zeros(shape=(max_parts * 2 + 1, max_parts * 2 + 1, max_parts * 2 + 1), dtype=np.uint8)
+        grid[max_parts + 1, max_parts + 1, max_parts + 1] = 1
+        assert np.sum(grid) == 1, f"Error: The core is not placed correctly in the grid. Sum: {np.sum(grid)}."
 
-    # Add all attachment faces to the 'explore_list' --> core position is kept the same as I do not know whether I can change it or not
+    # Add all attachment faces to the 'explore_list'
     for attachment_face in v2_core.attachment_faces.values():
         to_explore.append(
             __Module(
                 core_position,
-                Vector3([1, 0, 0]),
+                Vector3([1, 0, 0]), # Here I changed the forward direction, because it seems not to be in line with the face coordinates
                 Vector3([0, 0, 1]),
-                0, "Core", 0, attachment_face,))
+                0, "Core", 0, 0, attachment_face,))
 
     # ---- Explore all attachment points for development --> recursive
-    explored_modules = {}
-    while part_count < max_parts:
-        # Get parent module (and direction) from "to_explore" and remove it afterwards
-        module = rng.choice(to_explore)
+    for _ in range(0, max_parts):
+        # Get parent module and id from "to_explore"
+        module = to_explore[0]#rng.choice(to_explore)
         module_id = module.module_reference.uuid
 
-        # Get attachment points of the module
+        # Get all attachment points of the module
         attachment_point_tuples_all = list(module.module_reference.attachment_points.items())
 
         # Initialize explored_modules if it is not initialized yet
@@ -97,33 +137,40 @@ def develop(
             explored_modules[module_id] = [[], []]
             if module.position == core_position: # Core module
                 assert len(attachment_point_tuples_all) == 9, f"Error: The core module does not have 9 attachment points. Length: {len(attachment_point_tuples_all)}."
-                # Eliminate attachment points that are not on middle row?
-                if mode_slots4face_all == False:
+                # Eliminate attachment points?
+                if mode_core_mult == False: # Keep only middle attachment point
+                    for att_tup in attachment_point_tuples_all:
+                        if att_tup[0] in [0, 1, 2, 3, 5, 6, 7, 8]:
+                            explored_modules[module_id][0].append(att_tup)
+                elif mode_slots4face_all == False: # Keep only middle (row's) attachment points
                     for att_tup in attachment_point_tuples_all:
                         if att_tup[0] in [0, 1, 2, 6, 7, 8]:
                             explored_modules[module_id][0].append(att_tup)
-                ## Get the min and max values of the attachment points
-                # Offset of attachment points
-                att_arr = [] 
-                for att in attachment_point_tuples_all:
-                    transf_off = __rotate(att[1].offset, module.up, att[1].orientation)
-                    att_arr.append(transf_off)
-                att_arr = np.array(att_arr)
-                # Min and max values of the attachment points
-                explored_modules[module_id][1].append(att_arr.min(axis = 0))
-                explored_modules[module_id][1].append(att_arr.max(axis = 0))
+                
+                ## Get the min and max values of the attachment points --> used to adapt the core position later on!
+                if mode_core_mult:
+                    # Offset of attachment points
+                    att_arr = [] 
+                    for att in attachment_point_tuples_all:
+                        transf_off = __rotate(att[1].offset, module.up, att[1].orientation)
+                        att_arr.append(transf_off)
+                    att_arr = np.array(att_arr)
+                    # Min and max values of the attachment points
+                    explored_modules[module_id][1].append(att_arr.min(axis = 0))
+                    explored_modules[module_id][1].append(att_arr.max(axis = 0))
 
         # Get random attachment points which have not been explored yet
         attachment_point_tuples = [attach for attach in attachment_point_tuples_all if attach not in explored_modules[module_id][0]]
         attachment_point_tuple = tuple(rng.choice(attachment_point_tuples))
-        explored_modules[module_id][0].append(attachment_point_tuple)
+        explored_modules[module_id][0].append(attachment_point_tuple) # Append to explored!
 
         # Check if forward direction is not vertical
         forward = __rotate(module.forward, module.up, attachment_point_tuple[1].orientation)
+
         if (mode_not_vertical and (forward[2] == 0)) or (not mode_not_vertical):
             # Get slot location
             bool_core = (module.position == core_position)
-            if bool_core: # If the module is a core module  --> get relative location of slot as we have 3 x 3 x 3 core
+            if bool_core and mode_core_mult: # If the module is a core module and multiple slots --> get relative location of slot as we have 3 x 3 x 3 core
                 # Get relative location of slot within face
                 middle = np.mean(explored_modules[module_id][1], axis = 0)
                 divider = (explored_modules[module_id][1][1] - middle) # maximum slot location - middle, both are transformed already
@@ -137,7 +184,8 @@ def develop(
                 rellocslot = np.zeros(3, dtype = np.int64)
 
             # Add a child to the body
-            child, slots2close = __add_child(body_net, module, attachment_point_tuple, grid, rellocslot, core_position, mode_slots4face_all, bool_core)
+            child, slots2close = __add_child(body_net, module, attachment_point_tuple, grid, rellocslot, core_position, mode_core_mult,
+                                             mode_slots4face_all, bool_core, zdirection, include_bias, include_chain_length, include_empty)
 
             # Check some conditions
             if (child == False) and (mode_collision): # If the cell is occupied
@@ -155,7 +203,6 @@ def develop(
         else:
             pass
 
-
         # Remove module from to_explore if it has no attachment points left after current
         if not mode_slots4face: # Or immediately if mode_slots4face is off
             to_explore.remove(module)
@@ -166,13 +213,21 @@ def develop(
         if (to_explore == []) or (collision):
             break
     
-    # plt.imshow(grid[:, :, core_position[2]])
-    # plt.xticks(np.arange(0, 20 * 2 + 3, 1))
-    # plt.yticks(np.arange(0, 20 * 2 + 3, 1))
+
+    # ---- Plot
+    # Create a custom colormap with 4 colors
+    cmap = plt.cm.colors.ListedColormap(['grey', 'red', 'black', 'white', 'blue'])
+
+    # Create a normalized color map
+    norm = plt.cm.colors.Normalize(vmin=0, vmax=4)
+
+    # # Create an array of colors based on the values
+    # plt.imshow(grid[:, :, core_position[2]], cmap = cmap, norm = norm)
+    # plt.xticks(np.arange(0, grid.shape[0], 1))
+    # plt.yticks(np.arange(0, grid.shape[1], 1))
     # plt.grid(True, which='both')
     # plt.show()
-    # print("----------------------------")
-
+    
     return body
 
 
@@ -180,30 +235,59 @@ def __evaluate_cppn(
     body_net: multineat.NeuralNetwork,
     position: Vector3[np.int_],
     chain_length: int,
+    zdirection: bool, include_bias: bool, include_chain_length: bool, include_empty: bool
 ) -> tuple[Any, int]:
     """
-    Get module type and orientation from a multineat CPPN network.
-
-    :param body_net: The CPPN network.
-    :param position: Position of the module.
-    :param chain_length: Tree distance of the module from the core.
-    :returns: (module type, rotation_index)
+    Goal:
+        Get module type and orientation from a multineat CPPN network.
+    -----------------------------------------------------------------------
+    Input:
+        body_net: The CPPN network.
+        position: Position of the module.
+        chain_length: Tree distance of the module from the core.
+        zdirection: Whether to include the z direction as input for CPPN.
+        include_bias: Whether to include the bias as input for CPPN.
+        include_chain_length: Whether to include the chain length as input for CPPN.
+        include_empty: Whether to include the empty module output for CPPN.
+    -----------------------------------------------------------------------
+    Output:
+        (module type, rotation_index)
     """
+    # Unpack tuple
     x, y, z = position
-    # assert isinstance(
-    #     x, np.int64
-    # ), f"Error: The position is not of type int. Type: {type(x)}."
-    body_net.Input([x, y, z])
+
+    # Get inputs
+    inputs = []
+    if include_bias:
+        inputs.append(1)
+    inputs.append(x)
+    inputs.append(y)
+    if zdirection:
+        inputs.append(z)
+    if include_chain_length:
+        inputs.append(chain_length)
+
+    # Set inputs
+    body_net.Input(inputs)
+
+    # Activate all layers
     body_net.ActivateAllLayers()
+
+    # Get outputs
     outputs = body_net.Output()
 
-    # get module type from output probabilities
-    type_probs = list(outputs[:3])
-    types = [None, BrickV2, ActiveHingeV2]
+    # Get module type and rotation from output probabilities
+    if include_empty:
+        assert len(outputs) == 5, f"Error: The number of outputs is not 5. Length: {len(outputs)}."
+        type_probs = list(outputs[:3])
+        rotation_probs = list(outputs[3:5])
+        types = [None, BrickV2, ActiveHingeV2]
+    else:
+        assert len(outputs) == 4, f"Error: The number of outputs is not 4. Length: {len(outputs)}."
+        type_probs = list(outputs[:2])
+        rotation_probs = list(outputs[2:4])
+        types = [BrickV2, ActiveHingeV2]
     module_type = types[type_probs.index(max(type_probs))]
-
-    # get rotation from output probabilities
-    rotation_probs = list(outputs[2:4])
     rotation_index = rotation_probs.index(max(rotation_probs))
 
     return module_type, rotation_index
@@ -213,10 +297,30 @@ def __add_child(
     body_net: multineat.NeuralNetwork,
     module: __Module,
     attachment_point_tuple: tuple[int, AttachmentPoint],
-    grid: NDArray[np.uint8], relllocslot: Vector3[np.int_], core_pos: Vector3[np.int_], mode_slots4face_all: bool,
-    bool_core: str
+    grid: NDArray[np.uint8], relllocslot: Vector3[np.int_], core_pos: Vector3[np.int_], 
+    mode_core_mult: bool, mode_slots4face_all: bool, bool_core: str,
+    zdirection: bool, include_bias: bool, include_chain_length: bool, include_empty: bool
 ) -> __Module | None:
-    
+    """"Goal:
+        Add a child to the body.
+    ----------------------------------------------------------------------
+    Input:
+        body_net: The CPPN network.
+        module: The parent module.
+        attachment_point_tuple: The attachment point tuple --> index and attachment point.
+        grid: The grid of the body.
+        relllocslot: The relative location of the slot --> only used if multiple slots are considered
+        core_pos: The position of the core.
+        mode_core_mult: Whether to allow multiple core slots.
+        mode_slots4face_all: Whether slots can be set for all 9 attachments, or only 3, 4, 5
+        bool_core: Whether the module is a core module.
+        zdirection: Whether to include the z direction as input for CPPN.
+        include_bias: Whether to include the bias as input for CPPN.
+        include_chain_length: Whether to include the chain length as input for CPPN.
+        include_empty: Whether to include the empty module output for CPPN.
+    ----------------------------------------------------------------------------------------------------
+    Output:
+        The new module or None if no child can be set."""
     # ---- Unpack attachment point tuple
     attachment_index, attachment_point = attachment_point_tuple
 
@@ -228,7 +332,7 @@ def __add_child(
 
     # ---- Checks 
     # Do a check for z-position
-    if mode_slots4face_all == False:
+    if (mode_slots4face_all == False) or (mode_core_mult == False):
         try:
             assert (position[2] == core_pos[2]), f"Error: The z-position is not the same as the core. Position: {position}, Module Position: {module.position}, Module Forward: {module.forward}, Forward: {forward}, rellocslot: {relllocslot}, idx_slot: {attachment_index}."
         except AssertionError as e:
@@ -242,7 +346,10 @@ def __add_child(
 
     # Do a check for the position if we have a module directly following the core
     if bool_core:
-        lwb_core, ub_core = core_pos - 1, core_pos + 1
+        if mode_core_mult: # 3 x 3 x 3 core
+            lwb_core, ub_core = core_pos - 1, core_pos + 1
+        else: # 1 x 1 x 1 core
+            lwb_core, ub_core = core_pos, core_pos
         bool_pos = (position[0] >= lwb_core[0]) and (position[1] >= lwb_core[1]) and (position[2] >= lwb_core[2])
         bool_pos = bool_pos and (position[0] <= ub_core[0]) and (position[1] <= ub_core[1]) and (position[2] <= ub_core[2])
         assert not bool_pos, f"Error: The position is within the CORE, something went wrong! Position: {position}, Module Position: {module.position}, Module Forward: {module.forward}, Forward: {forward}, rellocslot: {relllocslot}, idx_slot: {attachment_index}."
@@ -253,35 +360,46 @@ def __add_child(
     if grid[tuple(position)] > 0:
         return False, None # False means that the cell is occupied
     else:
-        # Occupy cell
-        grid[tuple(position)] += 1
+        # # Occupy cell
+        # grid[tuple(position)] += 1
         # Increase chain length
         chain_length = module.chain_length + 1
-    
-    # plt.imshow(grid[:, :, core_pos[2]])
-    # plt.xticks(np.arange(0, 20 * 2 + 3, 1))
-    # plt.yticks(np.arange(0, 20 * 2 + 3, 1))
-    # plt.grid(True, which='both')
-    # plt.show()
-    
-    # ---- Get new position including the attachment point offset --> Why an int?
-    # if not bool_core:
-    #     rotate_off = np.array(__rotate(attachment_point.offset, module.up, attachment_point.orientation))
-    #     rotate_off = Vector3(np.where(rotate_off != 0, np.sign(rotate_off) * 0.5, 0))
-    # else: # For core we already corrected the position completely by switching from a 3 x 3 x 3 core to a 1 x 1 x 1 core
-    #     rotate_off = 0
-    #new_pos = np.array(position + rotate_off, dtype=np.int64)#np.array(np.round(position + rotate_off), dtype=np.int64)
-    new_pos = position
-
+        
     # ---- Evaluate CPPN
-    child_type, child_rotation_index = __evaluate_cppn(body_net, new_pos, chain_length)
+    child_type, child_rotation_index = __evaluate_cppn(body_net, position, chain_length, zdirection, include_bias, include_chain_length, include_empty)
     
-    # ---- Adapt rotation
-    if (child_type == BrickV2) and (module.module_type == ActiveHingeV2) and (module.rotation_index == 1):
-        # inverts it no absolute rotation
-        child_rotation_index = 1
-    angle = child_rotation_index * (np.pi / 2.0) # Index is 0 | 1 --> 0 pi | 0.5 pi
+    # ---- Set grid cell as occupied
+    if child_type is None:
+        grid[tuple(position)] = 2
+    elif child_type == ActiveHingeV2:
+        grid[tuple(position)] = 3
+    elif child_type == BrickV2:
+        grid[tuple(position)] = 4
 
+    # ---- Adapt rotation
+    # _absolute_rotation
+    absolute_rotation = 0
+    if zdirection == False:
+        # Rotation always 0 for brick
+        if (child_type != ActiveHingeV2):
+            child_rotation_index = 0
+
+        # Adapt absolute rotation  --> ?? idkn copied it
+        if (child_type == ActiveHingeV2) and (child_rotation_index == 1):
+            if (module.module_type == ActiveHingeV2) and (module._absolute_rotation == 1):
+                absolute_rotation = 0
+            else:
+                absolute_rotation = 1
+        else:
+            if (module.module_type == ActiveHingeV2) and (module._absolute_rotation == 1):
+                absolute_rotation = 1
+        
+        # Adapt rotation --> ?? idkn copied it
+        if (child_type == BrickV2) and (module.module_type == ActiveHingeV2) and (module._absolute_rotation == 1):
+            child_rotation_index = 1
+
+    angle = child_rotation_index * (np.pi / 2.0) # Index is 0 | 1 --> 0 pi | 0.5 pi
+    
     # ---- Is setting the child possible?
     bool_None = (child_type is None)
     if bool_None: # Empty block is queried --> No child can be set
@@ -289,6 +407,8 @@ def __add_child(
     else:
         # Here we call the queried module type to get the desired type of module and rotation
         child = child_type(angle)
+        if child_type == ActiveHingeV2:
+            assert len(child.attachment_points.keys()) == 1, f"Error: The number of attachment points is not 1. Length: {len(child.attachment_points.keys())}."
         # Here we need an exception as for the core module the function is different!
         try:
             bool_set_child, slots2close = module.module_reference.can_set_child(child, attachment_index, flag = "condition")
@@ -296,7 +416,7 @@ def __add_child(
         except TypeError:
             slots2close = []
             bool_set_child = (not module.module_reference.can_set_child(child, attachment_index))
-            
+    
     # If not possible, return None
     if bool_None or bool_set_child:
         return None, None
@@ -314,6 +434,7 @@ def __add_child(
         chain_length,
         child_type,
         child_rotation_index,
+        absolute_rotation,
         child,
     ), slots2close  
 
