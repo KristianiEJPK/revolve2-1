@@ -151,9 +151,11 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
                      mode_collision: bool, mode_core_mult: bool, mode_slots4face: bool,
                     mode_slots4face_all: bool, mode_not_vertical: bool) -> BodyV2:
         """
-        Develop the genotype into a modular robot.
-
-        :returns: The created robot.
+        Goal:
+            Develop the genotype into a modular robot.
+        -------------------------------------------------------------------------------------------
+        Output: T
+            The created robot.
         """
         return develop(self.body, querying_seed, zdirection = zdirection, 
                                  include_bias = include_bias, include_chain_length = include_chain_length,

@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 from copy import deepcopy
 import multineat
 import numpy as np
 import sqlalchemy.orm as orm
 from sqlalchemy import event
 from sqlalchemy.engine import Connection
-
 from typing_extensions import Self
 
-class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
+from revolve2.modular_robot.body.v2 import BodyV2
+from ._body_develop_grn import DevelopGRN
+
+class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
     """Goal:
         SQLAlchemy model for a CPPNWIN body genotype."""
 
@@ -20,22 +24,21 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
     )
 
     @classmethod
-    def random_body(self: object, rng: np.random.Generator) -> BodyGenotypeOrmV2:
+    def random_body(self: object, rng: np.random.Generator) -> BodyGenotypeOrmV2GRN:
         # Set genome size
         genome_size = 150 + 1
         # Set random genotype
         genotype = [round(rng.uniform(0, 1), 2) for _ in range(genome_size)]
 
-        return BodyGenotypeOrmV2(body = genotype)
+        return BodyGenotypeOrmV2GRN(body = genotype)
     
     def mutate_body(
         self,
-        innov_db: multineat.InnovationDatabase,
         rng: np.random.Generator,
-    ) -> BodyGenotypeOrmV2: # Ask whether a copy should be provided or not!
+    ) -> BodyGenotypeOrmV2GRN: # Ask whether a copy should be provided or not!
         
         # Make deepcopy of the genotype
-        genotype = deepcopy(innov_db.body)
+        genotype = deepcopy(self.body)
         # Get a random mutation position
         position = rng.sample(range(0, len(genotype)), 1)[0]
 
@@ -73,7 +76,7 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
         else:
             raise ValueError(f'Unknown mutation type {type}')
         
-        return BodyGenotypeOrmV2(body = genotype)
+        return BodyGenotypeOrmV2GRN(body = genotype)
 
     @classmethod
     def crossover_body(
@@ -81,7 +84,7 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
         parent1: Self,
         parent2: Self,
         rng: np.random.Generator,
-    ) -> BodyGenotypeOrmV2:
+    ) -> BodyGenotypeOrmV2GRN:
 
         # Set promoter threshold and number of nucleotypes 
         promoter_threshold = 0.8
@@ -115,4 +118,33 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
             # Append the subset to the new genotype
             new_genotype += subset
 
-        return BodyGenotypeOrmV2(body = new_genotype)
+        return BodyGenotypeOrmV2GRN(body = new_genotype)
+    
+    def develop_body(self: object, max_parts: int, querying_seed: int) -> BodyV2:
+        """
+        Goal:
+            Develop the genotype into a modular robot.
+        -------------------------------------------------------------------------------------------
+        Output:
+            The created robot.
+        """
+        return DevelopGRN(max_parts, self.body, querying_seed).develop()
+
+
+
+
+@event.listens_for(BodyGenotypeOrmV2GRN, "before_update", propagate=True)
+@event.listens_for(BodyGenotypeOrmV2GRN, "before_insert", propagate=True)
+def _update_serialized_body(
+    mapper: orm.Mapper[BodyGenotypeOrmV2GRN],
+    connection: Connection,
+    target: BodyGenotypeOrmV2GRN,
+) -> None:
+    target._serialized_body = target.body.Serialize()
+    pass
+
+@event.listens_for(BodyGenotypeOrmV2GRN, "load", propagate=True)
+def _deserialize_body(target: BodyGenotypeOrmV2GRN, context: orm.QueryContext) -> None:
+    body = multineat.Genome()
+    body.Deserialize(target._serialized_body)
+    target.body = body

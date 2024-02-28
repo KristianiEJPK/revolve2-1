@@ -1,56 +1,545 @@
+import math
 import numpy as np
 import random
+from revolve2.modular_robot.body.v2 import ActiveHingeV2, BodyV2, BrickV2, CoreV2
 
 # todo: first work out all functions to get an understanding, then change it to a class based
 # nature.
 
-def develop_body(promotors, genotype, promoter_threshold, types_nucleotypes, regulatory_transcription_factor_idx,
-                regulatory_min_idx, regulatory_max_idx, transcription_factor_idx, transcription_factor_amount_idx,
-                diffusion_site_idx, structural_trs, regulatory_tfs, diffusion_sites_qt,
-                cells):
-    # Call 'gene_parser'
-    promotors = gene_parser(promotors, genotype, promoter_threshold, types_nucleotypes, regulatory_transcription_factor_idx,
-                regulatory_min_idx, regulatory_max_idx, transcription_factor_idx, transcription_factor_amount_idx,
-                diffusion_site_idx, structural_trs, regulatory_tfs, diffusion_sites_qt)
-    # Call 'regulate'
-    regulate(promotors, diffusion_sites_qt, cells)
+# @dataclass
+# class __Module:
+#     """"Goal:
+#         Class to hold some values for the functions in this file.
+#     ----------------------------------------------------------------------
+#     Input:
+#         position: The position of the module.
+#         forward: Identifies what the forward direction is for the module.
+#         up: Identifies what the up direction is for the module.
+#         chain_length: The distance (in blocks) from the core.
+#         module_type: The type of the module.
+#         rotation_index: The index of the rotation.
+#         _absolute_rotation: The absolute rotation index of the module.
+#         cell: The cell.
+#         module_reference: The module."""
+#     position: Vector3[np.int_]
+#     forward: Vector3[np.int_]
+#     up: Vector3[np.int_]
+#     chain_length: int
+#     module_type: object
+#     rotation_index: int
+#     _absolute_rotation: int
+#     cell: Module
+#     module_reference: Module
 
-def regulate(promotors, diffusion_sites_qt, cells):
-    maternal_injection(promotors, diffusion_sites_qt, cells)
-    growth()
 
-def maternal_injection(promotors, diffusion_sites_qt, cells):
+class DevelopGRN():
     """Goal:
-        Injects maternal tf into single cell embryo and starts development of the first cell.
-        The tf injected is regulatory tf of the first gene in the genetic string.
-        The amount injected is the minimum for the regulatory tf to regulate its regulated product.
-        """
-    # Initialize
-    first_gene_idx = 0
-    tf_label_idx = 0
-    min_value_idx = 1
+        Class to develop a GRN.
+    ----------------------------------------------------------------------	
+    """
 
-    # Get label of regulatory transcription factor of first gene
-    mother_tf_label = promotors[first_gene_idx][tf_label_idx]
-    # Get minimum amount of regulatory tf to regulate regulated product
-    mother_tf_injection = float(promotors[first_gene_idx][min_value_idx])
+    def __init__(self, max_modules, genotype, querying_seed,):
+        # Initialize
+        self.max_modules = max_modules # Maximum number of modules
+        self.genotype = genotype # Genotype
 
-    # Create first cell
-    first_cell = Cell()
+        self.querying_seed = querying_seed # Querying seed
 
-    # Distributes injection among diffusion sites
-    first_cell.transcription_factors[mother_tf_label] = \
-        [mother_tf_injection / diffusion_sites_qt] * diffusion_sites_qt
+        # Internal variables
+        self.random = None # Random number generator
+        self.phenotype_body = None # Phenotype body
+        self.queried_substrate = {} # Dictionary to store the queried substrate
+        self.cells = [] # List to store the cells
+        self.promotors = [] # List to store the promotors
+        self.quantity_modules = 0
+
+        # Indices --> seems like there is a promotor followed by 6 values, then a promotor, etc.
+        self.regulatory_transcription_factor_idx = 0 # Index of the regulatory transcription factor --> which regulatory tf is expressed
+        self.regulatory_min_idx = 1 # Index of the minimum regulatory value gene is responsive --> lower than suppressed
+        self.regulatory_max_idx = 2 # Index of the maximum regulatory value gene is responsive --> higher than suppressed
+        self.transcription_factor_idx = 3 # Index of the transcription factor --> which transcription factor is expressed
+        self.transcription_factor_amount_idx = 4 # Index of the transcription factor amount --> amount of increase of the tf at the diffusion site
+        self.diffusion_site_idx = 5 # Index of the diffusion site --> where the tf is expressed
+
+        # Number of nucleotides, number of diffusion sites, kind of transcription factors and number of regulatory transcription factors
+        self.types_nucleotypes = 6 # Number of types of nucleotypes
+        self.diffusion_sites_qt = 4 # Number of diffusion sites (probably front, back, left, right)?
+        self.structural_trs = len(['brick', 'joint', 'rotation'])
+        self.regulatory_tfs = 2
+
+        # Parameters
+        self.promoter_threshold = 0.8 # Promoter threshold
+        self.concentration_decay = 0.005 # Concentration decay
+        self.concentration_threshold = self.genotype[0] # Concentration threshold
+        self.increase_scaling = 100
+        self.intra_diffusion_rate = self.concentration_decay / 2
+        self.inter_diffusion_rate = self.intra_diffusion_rate / 8
+        self.dev_steps = 100 # Number of development steps
+
+        # Adapt genotype
+        self.genotype = self.genotype[1:]
+
+    def develop(self) -> BodyV2:
+        """Goal:
+            Develops the body of the robot."""
+
+        # Initialize
+        self.random = random.Random(self.querying_seed)
+        self.quantity_nodes = 0
+        self.develop_body()
+        #self.phenotype_body.finalize()
+        return self.phenotype_body
+
+    def develop_body(self):
+        """Goal:
+            Develops the body of the robot."""
+        # Call 'gene_parser'
+        self.gene_parser()
+        # Call 'regulate'
+        self.regulate()
+
+        return self.phenotype_body
     
-    # .....
-    self.express_promoters(first_cell)
+    def gene_parser(self):
+        """Goal:
+            Create genes from the genotype."""
+        
+        # Initialize nucleotide index
+        nucleotide_idx = 0
+
+        # Repeat as long as index is smaller than gene length
+        while nucleotide_idx < len(self.genotype):
+            # If the associated value is smaller than the promoter threshold
+            if self.genotype[nucleotide_idx] < self.promoter_threshold:
+                # If there are nucleotypes enough to compose a gene
+                if (len(self.genotype) - 1 - nucleotide_idx) >= self.types_nucleotypes:
+                    # Get regulatory transcription factor(s)
+                    regulatory_transcription_factor = self.genotype[nucleotide_idx + self.regulatory_transcription_factor_idx + 1] # Which regulatory tf is expressed?
+                    regulatory_min = self.genotype[nucleotide_idx + self.regulatory_min_idx + 1] # Between those two values regulatory tf expresses gene
+                    regulatory_max = self.genotype[nucleotide_idx + self.regulatory_max_idx + 1]
+                    # Get transcription factor, -amount and diffusion site
+                    transcription_factor = self.genotype[nucleotide_idx + self.transcription_factor_idx + 1] # Which tf is expressed?
+                    transcription_factor_amount = self.genotype[nucleotide_idx + self.transcription_factor_amount_idx + 1] # Amount of increase of the tf at the diffusion site
+                    diffusion_site = self.genotype[nucleotide_idx + self.diffusion_site_idx + 1] # Where the tf is expressed
+                    
+                    # Converts rtfs and tfs values into labels
+                    range_size = 1 / (self.structural_trs + self.regulatory_tfs)
+                    limits = [round(limit / 100, 2) for limit in range(0, 1 * 100, int(range_size * 100))]
+                    for idx in range(0, len(limits) - 1):
+                        # Set label for regulatory transcription factor
+                        if (regulatory_transcription_factor >= limits[idx]) and (regulatory_transcription_factor < limits[idx + 1]):
+                            regulatory_transcription_factor_label = 'TF' + str(idx + 1)
+                        elif regulatory_transcription_factor >= limits[idx + 1]:
+                            regulatory_transcription_factor_label = 'TF' + str(len(limits))
+                        # Set label for transcription factor
+                        if (transcription_factor >= limits[idx]) and (transcription_factor < limits[idx + 1]):
+                            transcription_factor_label = 'TF' + str(idx + 1)
+                        elif transcription_factor >= limits[idx + 1]:
+                            transcription_factor_label = 'TF' + str(len(limits))
+            
+                    # Converts diffusion sites values into labels
+                    range_size = 1 / self.diffusion_sites_qt
+                    limits = [round(limit / 100, 2) for limit in range(0, 1 * 100, int(range_size * 100))]
+                    for idx in range(0, len(limits) - 1):
+                        if limits[idx+1] > diffusion_site >= limits[idx]:
+                            diffusion_site_label = idx
+                        elif diffusion_site >= limits[idx + 1]:
+                            diffusion_site_label = len(limits) - 1
+                    
+                    # Translate gene to interpretable format
+                    gene = [regulatory_transcription_factor_label, regulatory_min, regulatory_max,
+                                transcription_factor_label, transcription_factor_amount, diffusion_site_label]
+
+                    # Append gene to promoters
+                    self.promotors.append(gene)
+
+                    # Increase nucleotide index
+                    nucleotide_idx += self.types_nucleotypes
+            
+            # Increase nucleotide index
+            nucleotide_idx += 1
+        
+        # Convert to numpy
+        self.promotors = np.array(self.promotors)
+
+    def regulate(self):
+        """Goal:
+            Regulates the development."""
+        self.maternal_injection()
+        self.growth()
+
+    def maternal_injection(self):
+        """Goal:
+            Injects maternal tf into single cell embryo and starts development of the first cell.
+            The tf injected is regulatory tf of the first gene in the genetic string.
+            The amount injected is the minimum for the regulatory tf to regulate its regulated product.
+            """
+        # Initialize
+        first_gene_idx = 0
+        tf_label_idx = 0
+        min_value_idx = 1
+
+        # Get label of regulatory transcription factor of first gene
+        mother_tf_label = self.promotors[first_gene_idx][tf_label_idx]
+        # Get minimum amount of regulatory tf required to express the gene
+        mother_tf_injection = float(self.promotors[first_gene_idx][min_value_idx])
+
+        # Create first cell
+        first_cell = Cell()
+
+        # Distributes minimum injection among the diffusion sites
+        first_cell.transcription_factors[mother_tf_label] = \
+            [mother_tf_injection / self.diffusion_sites_qt] * self.diffusion_sites_qt
+        
+        # Expresses promoters of first cell and updates transcription factors
+        first_cell = self.express_promoters(first_cell)
+        
+        # Append first cell
+        self.cells.append(first_cell)
+
+        # Develop a module
+        first_cell.developed_module = self.place_head(first_cell)
+
+    def express_promoters(self, new_cell):
+        """Goal:
+            Expresses the promoters of a cell and updates the transcription factors.
+        -----------------------------------------------------------------------------------------------
+        Input:
+            self: object
+            new_cell: object"""
+        
+        for promotor in self.promotors:
+            # Get regulatory min and max values
+            regulatory_min_val = min(float(promotor[self.regulatory_min_idx]),
+                                        float(promotor[self.regulatory_max_idx]))
+            regulatory_max_val = max(float(promotor[self.regulatory_min_idx]),
+                                        float(promotor[self.regulatory_max_idx]))
+            
+            # Expresses a tf if its regulatory tf is present and within a range
+            if new_cell.transcription_factors.get(promotor[self.regulatory_transcription_factor_idx]) \
+                    and (sum(new_cell.transcription_factors[promotor[self.regulatory_transcription_factor_idx]]) \
+                    >= regulatory_min_val) \
+                    and (sum(new_cell.transcription_factors[promotor[self.regulatory_transcription_factor_idx]]) \
+                    <= regulatory_max_val):
+
+                # Update or add transcription factor
+                if new_cell.transcription_factors.get(promotor[self.transcription_factor_idx]):
+                    new_cell.transcription_factors[promotor[self.transcription_factor_idx]] \
+                        [int(promotor[self.diffusion_site_idx])] += float(promotor[self.transcription_factor_amount_idx])
+                else:
+                    new_cell.transcription_factors[promotor[self.transcription_factor_idx]] = [0] * self.diffusion_sites_qt
+                    new_cell.transcription_factors[promotor[self.transcription_factor_idx]] \
+                    [int(promotor[self.diffusion_site_idx])] = float(promotor[self.transcription_factor_amount_idx])
+        
+        return new_cell
     
-    # Append first cell
-    cells.append(first_cell)
+    def place_head(self, new_cell):
+        """Goal: Places the head of the embryo."""
+        # Initialize
+        orientation = 0
 
-    # Develop a module based on it
-    first_cell.developed_module = self.place_head(first_cell)
+        # Set variables
+        module_type = CoreV2
+        self.phenotype_body = BodyV2()
+        self.phenotype_body.core._id = self.quantity_modules
+        self.phenotype_body.core._rotation = orientation
+        self.phenotype_body.core.rgb = self.get_color(module_type, orientation)
+        self.phenotype_body.core.substrate_coordinates = (0, 0)
+        self.phenotype_body.core.turtle_direction = CoreV2.FRONT
+        self.phenotype_body.core.cell = new_cell
+        self.queried_substrate[(0, 0)] = self.phenotype_body.core
 
+        return self.phenotype_body.core
+
+    def growth(self):
+        """Goal:
+            Grows the embryo."""
+        # For all development steps
+        for t in range(0, self.dev_steps):
+            # Develops cells in order of age --> oldest first
+            for idxc in range(0, len(self.cells)):
+                cell = self.cells[idxc]
+                # For all transcription factors
+                for tf in cell.transcription_factors:
+                    # Incease amount of transcription factor in the cell
+                    self.increase(tf, cell)
+                    # Intra diffusion
+                    self.intra_diffusion(tf, cell)
+                    # Inter diffusion
+                    self.inter_diffusion(tf, cell)
+
+                # Place module
+                self.place_module(cell)
+
+                # Decay transcription factors
+                for tf in cell.transcription_factors:
+                    self.decay(tf, cell)
+
+    def increase(self, tf, cell):
+        """Goal:
+            Increases the amount of a transcription factor in a cell."""
+        # Increase concentration in due diffusion sites
+        tf_promotors = np.where(self.promotors[:, self.transcription_factor_idx] == tf)[0] # Where the trancription factor matches the tf
+        for tf_promotor_idx in tf_promotors:
+            cell.transcription_factors[tf][int(self.promotors[tf_promotor_idx][self.diffusion_site_idx])] += \
+                float(self.promotors[tf_promotor_idx][self.transcription_factor_amount_idx]) \
+                / float(self.increase_scaling)
+        
+        return cell
+
+    def intra_diffusion(self, tf, cell):
+        """Goal:
+            Performs intra diffusion of a transcription factor in a cell."""
+        # For each site: first right then left
+        for ds in range(0, self.diffusion_sites_qt):
+            # Get left and right diffusion sites
+            ds_left = ds - 1 if ds - 1 >= 0 else self.diffusion_sites_qt - 1
+            ds_right = ds + 1 if ds + 1 <= self.diffusion_sites_qt - 1 else 0
+
+            # Diffuse to right
+            if cell.transcription_factors[tf][ds] >= self.intra_diffusion_rate:
+                cell.transcription_factors[tf][ds] -= self.intra_diffusion_rate
+                cell.transcription_factors[tf][ds_right] += self.intra_diffusion_rate
+            # Diffuse to left
+            if cell.transcription_factors[tf][ds] >= self.intra_diffusion_rate:
+                cell.transcription_factors[tf][ds] -= self.intra_diffusion_rate
+                cell.transcription_factors[tf][ds_left] += self.intra_diffusion_rate
+    
+    def inter_diffusion(self, tf, cell):
+        """Goal: Performs inter diffusion of a transcription factor between cells."""
+        # For each diffusion site
+        for ds in range(0, self.diffusion_sites_qt):
+            # If diffusion site is the back of the core module, and the developed cell is a hinge or a brick
+            if (ds == CoreV2.BACK) and \
+                    (type(cell.developed_module) == ActiveHingeV2 or type(cell.developed_module) == BrickV2):
+                # If transcription factor concentration is equal or greater than the inter diffusion rate
+                if cell.transcription_factors[tf][CoreV2.BACK] >= self.inter_diffusion_rate:
+                    cell.transcription_factors[tf][CoreV2.BACK] -= self.inter_diffusion_rate
+
+                    # Update or add transcription factor
+                    if cell.developed_module._parent.cell.transcription_factors.get(tf):
+                        cell.developed_module._parent.cell.transcription_factors[tf][cell.developed_module.direction_from_parent] += self.inter_diffusion_rate
+                    else:
+                        cell.developed_module._parent.cell.transcription_factors[tf] = [0] * self.diffusion_sites_qt
+                        cell.developed_module._parent.cell.transcription_factors[tf][cell.developed_module.direction_from_parent] += self.inter_diffusion_rate
+
+            # If diffusion site is not the back of the core module, and the developed cell is a hinge --> also share from other sides without slots
+            elif (type(cell.developed_module) == ActiveHingeV2) and \
+                    ds in [CoreV2.LEFT, CoreV2.FRONT, CoreV2.RIGHT]:
+                # If the front side is not None and transcription factor concentration is equal or greater than the inter diffusion rate
+                if (cell.developed_module.children[CoreV2.FRONT] is not None) \
+                        and (cell.transcription_factors[tf][ds] >= self.inter_diffusion_rate):
+                    cell.transcription_factors[tf][ds] -= self.inter_diffusion_rate
+
+                    # Update or add transcription factor
+                    if cell.developed_module.children[CoreV2.FRONT].cell.transcription_factors.get(tf):
+                        cell.developed_module.children[CoreV2.FRONT].cell.transcription_factors[tf][CoreV2.BACK] += self.inter_diffusion_rate
+                    else:
+                        cell.developed_module.children[CoreV2.FRONT].cell.transcription_factors[tf] = [0] * self.diffusion_sites_qt
+                        cell.developed_module.children[CoreV2.FRONT].cell.transcription_factors[tf][CoreV2.BACK] += self.inter_diffusion_rate
+            else:
+                # If a developed module and the transcription factor concentration is equal or greater than the inter diffusion rate
+                if (cell.developed_module.children[ds] is not None) \
+                    and (cell.transcription_factors[tf][ds] >= self.inter_diffusion_rate):
+                    cell.transcription_factors[tf][ds] -= self.inter_diffusion_rate
+
+                    # Update or add transcription factor
+                    if cell.developed_module.children[ds].cell.transcription_factors.get(tf):
+                        cell.developed_module.children[ds].cell.transcription_factors[tf][CoreV2.BACK] += self.inter_diffusion_rate
+                    else:
+                        cell.developed_module.children[ds].cell.transcription_factors[tf] = [0] * self.diffusion_sites_qt
+                        cell.developed_module.children[ds].cell.transcription_factors[tf][CoreV2.BACK] += self.inter_diffusion_rate
+    
+    def place_module(self, cell):
+        """Goal:
+            Places a module in the embryo."""
+        # ---- Initializes
+        # Amount of transcription factors
+        tds_qt = (self.structural_trs + self.regulatory_tfs)
+        # Transcription factors
+        product_tfs = []
+        # Module types
+        modules_types = [BrickV2, ActiveHingeV2]
+
+        # Add product tfs (Brick, Hinge and rotation)
+        for tf in range(tds_qt - len(modules_types) - 1, tds_qt):
+            product_tfs.append(f'TF{tf+1}')
+
+        # Get concentrations of those tfs
+        concentration1 = sum(cell.transcription_factors[product_tfs[0]]) \
+            if cell.transcription_factors.get(product_tfs[0]) else 0  # B
+
+        concentration2 = sum(cell.transcription_factors[product_tfs[1]]) \
+            if cell.transcription_factors.get(product_tfs[1]) else 0  # A
+
+        concentration3 = sum(cell.transcription_factors[product_tfs[2]]) \
+            if cell.transcription_factors.get(product_tfs[2]) else 0  # rotation
+      
+        # Chooses tf with the highest concentration --> Brick or ActiveHinge
+        product_concentrations = [concentration1, concentration2]
+        idx_max = product_concentrations.index(max(product_concentrations))
+
+        # If tf concentration above a threshold
+        if product_concentrations[idx_max] > self.concentration_threshold:
+            # Grows in the free diffusion site with the highest concentration
+            freeslots = np.array([c is None for c in cell.developed_module.children])
+            if type(cell.developed_module) == BrickV2:
+                freeslots = np.append(freeslots, [False]) # Brick has no back
+            elif type(cell.developed_module) == ActiveHingeV2:
+                freeslots = np.append(freeslots, [False, False, False]) # Joint has no back nor left or right
+
+            # If free slots
+            if any(freeslots):
+                # Get indices of free slots
+                true_indices = np.where(freeslots)[0]
+                # Values
+                values_at_true_indices = np.array(cell.transcription_factors[product_tfs[idx_max]])[true_indices]
+                # Max value
+                max_value_index = np.argmax(values_at_true_indices)
+                # Index of max is new slot
+                position_of_max_value = true_indices[max_value_index]
+                slot = position_of_max_value
+
+                # Get coordinates and turtle direction
+                potential_module_coord, turtle_direction = self.calculate_coordinates(cell.developed_module, slot)
+                if (potential_module_coord not in self.queried_substrate.keys()) and (self.quantity_modules < self.max_modules - 1):
+                    module_type = modules_types[idx_max]
+
+                    # ---- Rotates only joints and if defined by concentration
+                    orientation = 1 if concentration3 > 0.5 and module_type == ActiveHingeV2 else 0
+                    # Get absolute rotation
+                    absolute_rotation = 0
+                    if module_type == ActiveHingeV2 and orientation == 1:
+                        if type(cell.developed_module) == ActiveHingeV2 and cell.developed_module._absolute_rotation == 1:
+                            absolute_rotation = 0
+                        else:
+                            absolute_rotation = 1
+                    else:
+                        if type(cell.developed_module) == ActiveHingeV2 and cell.developed_module._absolute_rotation == 1:
+                            absolute_rotation = 1
+                    # Adapt orientation
+                    if module_type == BrickV2 and type(cell.developed_module) == ActiveHingeV2 and cell.developed_module._absolute_rotation == 1:
+                        orientation = 1
+
+                    # Set characteristics of new model
+                    # Notes: new_module is the same as child, slot is the same as attachment index
+                    new_module = module_type(orientation * (math.pi / 2.0))
+                    self.quantity_modules += 1
+
+                    new_module._id = str(self.quantity_modules)
+                    new_module._absolute_rotation = absolute_rotation
+                    new_module.rgb = self.get_color(module_type, orientation)
+
+                    cell.developed_module.set_child(new_module, slot)
+
+                    #new_module._parent = cell.developed_module
+                    new_module.substrate_coordinates = potential_module_coord
+                    new_module.turtle_direction = turtle_direction
+                    new_module.direction_from_parent = slot
+                    self.queried_substrate[potential_module_coord] = new_module
+
+                    cell.developed_module.children[slot] = new_module
+                    self.new_cell(cell, new_module, slot)
+
+    def decay(self, tf, cell):
+        """Goal:
+            Decays the amount of a transcription factor in a cell."""
+        # Decay at all sites
+        for ds in range(0, self.diffusion_sites_qt):
+            cell.transcription_factors[tf][ds] = \
+                max(0, cell.transcription_factors[tf][ds] - self.concentration_decay)
+    
+    def new_cell(self, source_cell, new_module, slot):
+        """Goal:
+            Creates a new cell and shares the concentrations at diffusion sites."""
+        # Create new cell
+        new_cell = Cell()
+
+        # Share concentrations at diffusion sites
+        for tf in source_cell.transcription_factors:
+            # Initialize transcription factor
+            new_cell.transcription_factors[tf] = [0, 0, 0, 0]
+
+            # In the case of joint, also shares concentrations of sites without slot
+            if type(source_cell.developed_module) == ActiveHingeV2:
+                sites = [CoreV2.LEFT, CoreV2.FRONT, CoreV2.RIGHT]
+                for s in sites:
+                    if source_cell.transcription_factors[tf][s] > 0:
+                        # Get half of the concentration
+                        half_concentration = source_cell.transcription_factors[tf][s] / 2
+                        # Share half of the concentration
+                        source_cell.transcription_factors[tf][s] = half_concentration
+                        new_cell.transcription_factors[tf][CoreV2.BACK] += half_concentration
+                # Divide by the number of sites
+                new_cell.transcription_factors[tf][CoreV2.BACK] /= len(sites)
+            else:
+                if source_cell.transcription_factors[tf][slot] > 0:
+                    half_concentration = source_cell.transcription_factors[tf][slot] / 2
+                    source_cell.transcription_factors[tf][slot] = half_concentration
+                    new_cell.transcription_factors[tf][CoreV2.BACK] = half_concentration
+
+        # Express promoters of new cell and updates transcription factors
+        self.express_promoters(new_cell)
+        # Append new cell
+        self.cells.append(new_cell)
+        # Set new module
+        new_cell.developed_module = new_module
+        new_module.cell = new_cell
+    
+    def calculate_coordinates(self, parent, slot):
+        """Goal:
+            Calculate the actual 2d direction and coordinates of new module using relative-to-parent position as reference."""
+        # Initialize
+        dic = {CoreV2.FRONT: 0,
+               CoreV2.LEFT: 1,
+               CoreV2.BACK: 2,
+               CoreV2.RIGHT: 3}
+
+        inverse_dic = {0: CoreV2.FRONT,
+                       1: CoreV2.LEFT,
+                       2: CoreV2.BACK,
+                       3: CoreV2.RIGHT}
+
+        # Get direction
+        direction = dic[parent.turtle_direction] + dic[slot]
+        if direction >= len(dic):
+            direction = direction - len(dic)
+        turtle_direction = inverse_dic[direction]
+
+        # Get coordinates
+        if turtle_direction == CoreV2.LEFT:
+            coordinates = (parent.substrate_coordinates[0] - 1,
+                           parent.substrate_coordinates[1])
+        if turtle_direction == CoreV2.RIGHT:
+            coordinates = (parent.substrate_coordinates[0] + 1,
+                           parent.substrate_coordinates[1])
+        if turtle_direction == CoreV2.FRONT:
+            coordinates = (parent.substrate_coordinates[0],
+                           parent.substrate_coordinates[1] + 1)
+        if turtle_direction == CoreV2.BACK:
+            coordinates = (parent.substrate_coordinates[0],
+                           parent.substrate_coordinates[1] - 1)
+
+        return coordinates, turtle_direction
+
+    def get_color(self, module_type, rotation):
+        """Goal:
+            Get the color of a module."""
+        # Initialize
+        rgb = []
+        # Get color
+        if module_type == BrickV2:
+            rgb = [0, 0, 1]
+        elif module_type == ActiveHingeV2:
+            if rotation == 0:
+                rgb = [1, 0.08, 0.58]
+            else:
+                rgb = [0.7, 0, 0]
+        elif module_type == CoreV2:
+            rgb = [1, 1, 0]
+        else: raise ValueError(f'Unknown module type: {module_type}')
+
+        return rgb
 class Cell:
     """Goal:
         Class to model a cell.
@@ -63,86 +552,8 @@ class Cell:
         self.transcription_factors = {}
 
 
-def develop(querying_seed: int) -> BodyV2:
-
-    # Initialize
-    rng = random.Random(querying_seed) # Get random number generator
-    part_count = 0 # Number of body parts
-
-    # Call functions
-    develop_body()
 
 
-def gene_parser(promotors, genotype, promoter_threshold, types_nucleotypes, regulatory_transcription_factor_idx,
-                regulatory_min_idx, regulatory_max_idx, transcription_factor_idx, transcription_factor_amount_idx,
-                diffusion_site_idx, structural_trs, regulatory_tfs, diffusion_sites_qt):
-    """Goal:
-        Create genes from the genotype.
-    -----------------------------------------------------------------------------------------------
-    Input:
-        ...
-    -----------------------------------------------------------------------------------------------
-    Output:
-        ..."""
-    
-    
-    # Initialize nucleotide index
-    nucleotide_idx = 0
 
-    # Repeat as long as index is smaller than gene length
-    while nucleotide_idx < len(genotype):
-        # If the associated value is smaller than the promoter threshold
-        if genotype[nucleotide_idx] < promoter_threshold:
-            # If there are nucleotypes enough to compose a gene
-            if (len(genotype) - 1 - nucleotide_idx) >= types_nucleotypes:
-                # Get regulatory transcription factor(s)
-                regulatory_transcription_factor = genotype[nucleotide_idx + regulatory_transcription_factor_idx + 1]  # Gene product
-                regulatory_min = genotype[nucleotide_idx + regulatory_min_idx + 1]
-                regulatory_max = genotype[nucleotide_idx + regulatory_max_idx + 1]
-                # Get transcription factor, -amount and diffusion site
-                transcription_factor = genotype[nucleotide_idx + transcription_factor_idx + 1]
-                transcription_factor_amount = genotype[nucleotide_idx + transcription_factor_amount_idx + 1]
-                diffusion_site = genotype[nucleotide_idx + diffusion_site_idx + 1]
-                
-                # Converts tfs values into labels
-                range_size = 1 / (structural_trs + regulatory_tfs)
-                limits = [round(limit / 100, 2) for limit in range(0, 1 * 100, int(range_size * 100))]
-                for idx in range(0, len(limits) - 1): # Why up to minus 1?????
-                    # Set label for regulatory transcription factor
-                    if (regulatory_transcription_factor >= limits[idx]) and (regulatory_transcription_factor < limits[idx + 1]):
-                        regulatory_transcription_factor_label = 'TF' + str(idx + 1)
-                    elif regulatory_transcription_factor >= limits[idx + 1]: # ??????
-                        regulatory_transcription_factor_label = 'TF' + str(len(limits))
-                    # Set label for transcription factor
-                    if (transcription_factor >= limits[idx]) and (transcription_factor < limits[idx + 1]):
-                        transcription_factor_label = 'TF' + str(idx + 1)
-                    elif transcription_factor >= limits[idx + 1]: # ???????
-                        transcription_factor_label = 'TF' + str(len(limits))
-        
-                # Converts diffusion sites values into labels
-                range_size = 1 / diffusion_sites_qt
-                limits = [round(limit / 100, 2) for limit in range(0, 1 * 100, int(range_size * 100))]
-                for idx in range(0, len(limits) - 1): # Why up to minus 1?????
-                    if limits[idx+1] > diffusion_site >= limits[idx]:
-                        diffusion_site_label = idx
-                    elif diffusion_site >= limits[idx + 1]: # ???????
-                        diffusion_site_label = len(limits) - 1
-                
-                # Create gene
-                gene = [regulatory_transcription_factor_label, regulatory_min, regulatory_max,
-                            transcription_factor_label, transcription_factor_amount, diffusion_site_label]
 
-                # Append gene to promoters
-                promotors.append(gene)
-
-                # Increase nucleotide index
-                nucleotide_idx += types_nucleotypes
-        
-        # Increase nucleotide index
-        nucleotide_idx += 1
-    
-    # Convert to numpy
-    promotors = np.array(promotors)
-
-    return promotors
     

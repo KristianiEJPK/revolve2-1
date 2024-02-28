@@ -3,6 +3,15 @@
 import logging
 
 import config
+import os
+
+os.environ['ALGORITHM'] = 'GRN'
+
+if os.environ["Algorithm"] == "CPPN":
+    from genotype import Genotype
+elif os.environ["Algorithm"] == "GRN":
+    from genotype_grn import Genotype
+
 import multineat
 import numpy as np
 import numpy.typing as npt
@@ -10,7 +19,6 @@ from base import Base
 from evaluator import Evaluator
 from experiment import Experiment
 from generation import Generation
-from genotype import Genotype
 from individual import Individual
 from population import Population
 from sqlalchemy.engine import Engine
@@ -20,6 +28,7 @@ from revolve2.experimentation.database import OpenMethod, open_database_sqlite
 from revolve2.experimentation.logging import setup_logging
 from revolve2.experimentation.optimization.ea import population_management, selection
 from revolve2.experimentation.rng import make_rng, seed_from_time
+
 
 
 def select_parents(
@@ -160,17 +169,28 @@ def run_experiment(dbengine: Engine) -> None:
 
     # ---- Create an initial population.
     logging.info("Generating initial population.")
-    initial_genotypes = [
-        Genotype.random(
-            innov_db_body=innov_db_body,
-            innov_db_brain=innov_db_brain,
-            rng=rng, zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
-            include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
+    if os.environ["ALGORITHM"] == "CPPN":
+        initial_genotypes = [
+            Genotype.random(
+                innov_db_body=innov_db_body,
+                innov_db_brain=innov_db_brain,
+                rng=rng, zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
+                include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
 
-        )
-        for _ in range(config.POPULATION_SIZE)
-    ]
-    
+            )
+            for _ in range(config.POPULATION_SIZE)
+        ]
+    elif os.environ["ALGORITHM"] == "GRN":
+        initial_genotypes = [
+            Genotype.random(
+                innov_db_body=innov_db_body,
+                innov_db_brain=innov_db_brain,
+                rng=rng, zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
+                include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
+
+            )
+            for _ in range(config.POPULATION_SIZE)
+        ]
     # Evaluate the initial population.
     logging.info("Evaluating initial population.")
     initial_fitnesses = evaluator.evaluate(
@@ -181,6 +201,7 @@ def run_experiment(dbengine: Engine) -> None:
             mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL
             ) for genotype in initial_genotypes],
     )
+
 
     # Create a population of individuals, combining genotype with fitness.
     population = Population(
@@ -210,14 +231,24 @@ def run_experiment(dbengine: Engine) -> None:
 
         # Create offspring.
         parents = select_parents(rng, population, config.OFFSPRING_SIZE, config.NPARENTS, config.PARENT_TOURNAMENT_SIZE)
-        offspring_genotypes = [
-            Genotype.crossover(
-                population.individuals[parent1_i].genotype,
-                population.individuals[parent2_i].genotype,
-                rng, config.CROSSOVER_PROBABILITY	
-            ).mutate(innov_db_body, innov_db_brain, rng, config.MUTATION_PROBABILITY)
-            for parent1_i, parent2_i in parents
-        ]
+        if os.environ["ALGORITHM"] == "CPPN":
+            offspring_genotypes = [
+                Genotype.crossover(
+                    population.individuals[parent1_i].genotype,
+                    population.individuals[parent2_i].genotype,
+                    rng, config.CROSSOVER_PROBABILITY	
+                ).mutate(innov_db_body, innov_db_brain, rng, config.MUTATION_PROBABILITY)
+                for parent1_i, parent2_i in parents
+            ]
+        elif os.environ["ALGORITHM"] == "GRN":
+            offspring_genotypes = [
+                Genotype.crossover(
+                    population.individuals[parent1_i].genotype,
+                    population.individuals[parent2_i].genotype,
+                    rng, config.CROSSOVER_PROBABILITY	
+                ).mutate(innov_db_body, innov_db_brain, rng, config.MUTATION_PROBABILITY)
+                for parent1_i, parent2_i in parents
+            ]
 
         # Evaluate the offspring.
         offspring_fitnesses = evaluator.evaluate(

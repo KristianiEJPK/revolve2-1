@@ -3,7 +3,12 @@
 from dataclasses import dataclass
 
 from base import Base
-from genotype import Genotype
+import os
+
+if os.environ["Algorithm"] == "CPPN":
+    from genotype import Genotype
+elif os.environ["Algorithm"] == "GRN":
+    from genotype_grn import Genotype
 
 from revolve2.experimentation.optimization.ea import Individual as GenericIndividual
 
