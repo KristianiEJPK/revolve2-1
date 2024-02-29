@@ -54,6 +54,7 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2GRN, BrainGenotypeCpgOrm, BodyMappi
 
     def mutate(
         self,
+        innov_db_body: multineat.InnovationDatabase,
         innov_db_brain: multineat.InnovationDatabase,
         rng: np.random.Generator,
         mutation_prob: float,

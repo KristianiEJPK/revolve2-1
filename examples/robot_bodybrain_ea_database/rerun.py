@@ -4,7 +4,13 @@ import logging
 
 import config
 from evaluator import Evaluator
-from genotype import Genotype
+import os
+os.environ['ALGORITHM'] = 'GRN'
+
+if os.environ["Algorithm"] == "CPPN":
+    from genotype import Genotype
+elif os.environ["Algorithm"] == "GRN":
+    from genotype_grn import Genotype
 from individual import Individual
 from sqlalchemy import select
 from sqlalchemy.orm import Session

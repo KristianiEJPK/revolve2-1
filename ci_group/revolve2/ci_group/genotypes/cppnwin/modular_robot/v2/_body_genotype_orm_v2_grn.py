@@ -40,15 +40,15 @@ class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
         # Make deepcopy of the genotype
         genotype = deepcopy(self.body)
         # Get a random mutation position
-        position = rng.sample(range(0, len(genotype)), 1)[0]
+        position = rng.choice(range(0, len(genotype)), 1)[0]
 
         # Get a random mutation type
-        type = rng.sample(['perturbation', 'deletion', 'addition', 'swap'], 1)[0]
+        type = rng.choice(['perturbation', 'deletion', 'addition', 'swap'], 1)[0]
 
         # Mutate the genotype
         if type == 'perturbation':
             # Add or subtract a random value from the genotype
-            newv = round(genotype[position] + rng.normalvariate(0, 0.1), 2)
+            newv = round(genotype[position] + rng.normal(0, 0.1), 2)
             # Protect the boundaries
             if newv > 1:
                 genotype[position] = 1
@@ -64,15 +64,15 @@ class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
             genotype.insert(position, round(rng.uniform(0, 1), 2))
         elif type == 'swap':
             # Sample random second position
-            position2 = rng.sample(range(0, len(genotype)), 1)[0]
+            position2 = rng.choice(range(0, len(genotype)), 1)[0]
             while position == position2:
-                position2 = rng.sample(range(0, len(genotype)), 1)[0]
+                position2 = rng.choice(range(0, len(genotype)), 1)[0]
             # Get values
-            position_v = genotype.genotype[position]
-            position2_v = genotype.genotype[position2]
+            position_v = genotype[position]
+            position2_v = genotype[position2]
             # Swap values
-            genotype.genotype[position] = position2_v
-            genotype.genotype[position2] = position_v
+            genotype[position] = position2_v
+            genotype[position2] = position_v
         else:
             raise ValueError(f'Unknown mutation type {type}')
         
@@ -112,7 +112,7 @@ class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
                 nucleotide_idx += 1 # ???? Is there also a nucleotide skipped in between?
 
             # Sample a promotor site
-            cutpoint = rng.sample(promotor_sites, 1)[0]
+            cutpoint = rng.choice(promotor_sites, 1)[0]
             # Get a subset of the parent genotype
             subset = parent[0:cutpoint+types_nucleotypes+1]
             # Append the subset to the new genotype
@@ -140,11 +140,10 @@ def _update_serialized_body(
     connection: Connection,
     target: BodyGenotypeOrmV2GRN,
 ) -> None:
-    target._serialized_body = target.body.Serialize()
+    target._serialized_body = ','.join([str(gen) for gen in target.body])
     pass
 
 @event.listens_for(BodyGenotypeOrmV2GRN, "load", propagate=True)
 def _deserialize_body(target: BodyGenotypeOrmV2GRN, context: orm.QueryContext) -> None:
-    body = multineat.Genome()
-    body.Deserialize(target._serialized_body)
+    body = [float(gen) for gen in target._serialized_body.split(",")]
     target.body = body

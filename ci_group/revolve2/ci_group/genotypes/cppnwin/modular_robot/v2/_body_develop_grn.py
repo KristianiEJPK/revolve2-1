@@ -1,36 +1,35 @@
+from dataclasses import dataclass
 import math
 import numpy as np
-import random
+from revolve2.modular_robot.body import Module
 from revolve2.modular_robot.body.v2 import ActiveHingeV2, BodyV2, BrickV2, CoreV2
 
-# todo: first work out all functions to get an understanding, then change it to a class based
-# nature.
-
-# @dataclass
-# class __Module:
-#     """"Goal:
-#         Class to hold some values for the functions in this file.
-#     ----------------------------------------------------------------------
-#     Input:
-#         position: The position of the module.
-#         forward: Identifies what the forward direction is for the module.
-#         up: Identifies what the up direction is for the module.
-#         chain_length: The distance (in blocks) from the core.
-#         module_type: The type of the module.
-#         rotation_index: The index of the rotation.
-#         _absolute_rotation: The absolute rotation index of the module.
-#         cell: The cell.
-#         module_reference: The module."""
-#     position: Vector3[np.int_]
-#     forward: Vector3[np.int_]
-#     up: Vector3[np.int_]
-#     chain_length: int
-#     module_type: object
-#     rotation_index: int
-#     _absolute_rotation: int
-#     cell: Module
-#     module_reference: Module
-
+@dataclass
+class ModuleGRN:
+    """"Goal:
+        Class to hold some values for the functions in this file. 
+        The class is made due to the differences between the branches.
+    ----------------------------------------------------------------------
+    Input:
+        Module: The module as in the main branch.
+        _id: The id of the module.
+        _absolute_rotation: The absolute rotation of the module.
+        substrate_coordinates: The coordinates of the substrate.
+        turtle_direction: The direction of the front of the module.
+        cell: The cell module.
+        children: The children of the module.
+        _parent: The parent of the module.
+        direction_from_parent: The attachment face.
+        """
+    module: Module
+    _id: int
+    _absolute_rotation: int
+    substrate_coordinates: tuple
+    turtle_direction: int
+    cell: object
+    children: list
+    _parent: object
+    direction_from_parent: int
 
 class DevelopGRN():
     """Goal:
@@ -43,10 +42,7 @@ class DevelopGRN():
         self.max_modules = max_modules # Maximum number of modules
         self.genotype = genotype # Genotype
 
-        self.querying_seed = querying_seed # Querying seed
-
         # Internal variables
-        self.random = None # Random number generator
         self.phenotype_body = None # Phenotype body
         self.queried_substrate = {} # Dictionary to store the queried substrate
         self.cells = [] # List to store the cells
@@ -82,28 +78,24 @@ class DevelopGRN():
     def develop(self) -> BodyV2:
         """Goal:
             Develops the body of the robot."""
-
         # Initialize
-        self.random = random.Random(self.querying_seed)
-        self.quantity_nodes = 0
-        self.develop_body()
-        #self.phenotype_body.finalize()
+        self = self.develop_body()
+
         return self.phenotype_body
 
     def develop_body(self):
         """Goal:
             Develops the body of the robot."""
-        # Call 'gene_parser'
-        self.gene_parser()
-        # Call 'regulate'
-        self.regulate()
+        # Call 'gene_parser' --> decodes genes from the genotype
+        self = self.gene_parser()
+        # Call 'regulate' --> actually does everything
+        self = self.regulate()
 
-        return self.phenotype_body
+        return self
     
     def gene_parser(self):
         """Goal:
             Create genes from the genotype."""
-        
         # Initialize nucleotide index
         nucleotide_idx = 0
 
@@ -162,11 +154,15 @@ class DevelopGRN():
         # Convert to numpy
         self.promotors = np.array(self.promotors)
 
+        return self
+
     def regulate(self):
         """Goal:
             Regulates the development."""
-        self.maternal_injection()
-        self.growth()
+        self = self.maternal_injection()
+        self = self.growth()
+
+        return self
 
     def maternal_injection(self):
         """Goal:
@@ -199,6 +195,8 @@ class DevelopGRN():
 
         # Develop a module
         first_cell.developed_module = self.place_head(first_cell)
+
+        return self
 
     def express_promoters(self, new_cell):
         """Goal:
@@ -239,23 +237,22 @@ class DevelopGRN():
         orientation = 0
 
         # Set variables
-        module_type = CoreV2
-        self.phenotype_body = BodyV2()
-        self.phenotype_body.core._id = self.quantity_modules
-        self.phenotype_body.core._rotation = orientation
-        self.phenotype_body.core.rgb = self.get_color(module_type, orientation)
-        self.phenotype_body.core.substrate_coordinates = (0, 0)
-        self.phenotype_body.core.turtle_direction = CoreV2.FRONT
-        self.phenotype_body.core.cell = new_cell
+        self.phenotype_body = BodyV2() # Here you need to go to children--> idx --> children
         self.queried_substrate[(0, 0)] = self.phenotype_body.core
 
-        return self.phenotype_body.core
+        # Create new module
+        core_module = ModuleGRN(self.phenotype_body.core, self.quantity_modules, 
+                            orientation, (0, 0), CoreV2.FRONT, new_cell, 
+                            [None, None, None, None], None, None)
+
+        return core_module
 
     def growth(self):
         """Goal:
             Grows the embryo."""
         # For all development steps
         for t in range(0, self.dev_steps):
+
             # Develops cells in order of age --> oldest first
             for idxc in range(0, len(self.cells)):
                 cell = self.cells[idxc]
@@ -274,6 +271,7 @@ class DevelopGRN():
                 # Decay transcription factors
                 for tf in cell.transcription_factors:
                     self.decay(tf, cell)
+        return self
 
     def increase(self, tf, cell):
         """Goal:
@@ -311,7 +309,7 @@ class DevelopGRN():
         for ds in range(0, self.diffusion_sites_qt):
             # If diffusion site is the back of the core module, and the developed cell is a hinge or a brick
             if (ds == CoreV2.BACK) and \
-                    (type(cell.developed_module) == ActiveHingeV2 or type(cell.developed_module) == BrickV2):
+                    (type(cell.developed_module.module) == ActiveHingeV2 or type(cell.developed_module.module) == BrickV2):
                 # If transcription factor concentration is equal or greater than the inter diffusion rate
                 if cell.transcription_factors[tf][CoreV2.BACK] >= self.inter_diffusion_rate:
                     cell.transcription_factors[tf][CoreV2.BACK] -= self.inter_diffusion_rate
@@ -324,7 +322,7 @@ class DevelopGRN():
                         cell.developed_module._parent.cell.transcription_factors[tf][cell.developed_module.direction_from_parent] += self.inter_diffusion_rate
 
             # If diffusion site is not the back of the core module, and the developed cell is a hinge --> also share from other sides without slots
-            elif (type(cell.developed_module) == ActiveHingeV2) and \
+            elif (type(cell.developed_module.module) == ActiveHingeV2) and \
                     ds in [CoreV2.LEFT, CoreV2.FRONT, CoreV2.RIGHT]:
                 # If the front side is not None and transcription factor concentration is equal or greater than the inter diffusion rate
                 if (cell.developed_module.children[CoreV2.FRONT] is not None) \
@@ -383,10 +381,14 @@ class DevelopGRN():
         if product_concentrations[idx_max] > self.concentration_threshold:
             # Grows in the free diffusion site with the highest concentration
             freeslots = np.array([c is None for c in cell.developed_module.children])
-            if type(cell.developed_module) == BrickV2:
-                freeslots = np.append(freeslots, [False]) # Brick has no back
-            elif type(cell.developed_module) == ActiveHingeV2:
-                freeslots = np.append(freeslots, [False, False, False]) # Joint has no back nor left or right
+            if type(cell.developed_module.module) == BrickV2:
+                #freeslots[CoreV2.BACK] = False #np.append(freeslots, [False]) # Brick has no back
+                freeslots[-1] = False
+            elif type(cell.developed_module.module) == ActiveHingeV2:
+                freeslots[1:] = False
+                # freeslots[CoreV2.BACK] = False
+                # freeslots[CoreV2.LEFT] = False
+                # freeslots[CoreV2.RIGHT] = False #np.append(freeslots, [False, False, False]) # Joint has no back nor left or right
 
             # If free slots
             if any(freeslots):
@@ -410,36 +412,36 @@ class DevelopGRN():
                     # Get absolute rotation
                     absolute_rotation = 0
                     if module_type == ActiveHingeV2 and orientation == 1:
-                        if type(cell.developed_module) == ActiveHingeV2 and cell.developed_module._absolute_rotation == 1:
+                        if type(cell.developed_module.module) == ActiveHingeV2 and cell.developed_module._absolute_rotation == 1:
                             absolute_rotation = 0
                         else:
                             absolute_rotation = 1
                     else:
-                        if type(cell.developed_module) == ActiveHingeV2 and cell.developed_module._absolute_rotation == 1:
+                        if type(cell.developed_module.module) == ActiveHingeV2 and cell.developed_module._absolute_rotation == 1:
                             absolute_rotation = 1
                     # Adapt orientation
-                    if module_type == BrickV2 and type(cell.developed_module) == ActiveHingeV2 and cell.developed_module._absolute_rotation == 1:
+                    if module_type == BrickV2 and type(cell.developed_module.module) == ActiveHingeV2 and cell.developed_module._absolute_rotation == 1:
                         orientation = 1
 
                     # Set characteristics of new model
                     # Notes: new_module is the same as child, slot is the same as attachment index
                     new_module = module_type(orientation * (math.pi / 2.0))
+                    if type(cell.developed_module.module) not in [ActiveHingeV2, BrickV2]:
+                        cell.developed_module.module.attachment_faces[slot].set_child(new_module, 4)
+                    else:
+                        cell.developed_module.module.set_child(new_module, slot)
+
+                    self.queried_substrate[potential_module_coord] = new_module
                     self.quantity_modules += 1
 
-                    new_module._id = str(self.quantity_modules)
-                    new_module._absolute_rotation = absolute_rotation
-                    new_module.rgb = self.get_color(module_type, orientation)
+                    #numberofslots = len(list(new_module.attachment_points.keys()))
+                    module2add = ModuleGRN(new_module, str(self.quantity_modules), absolute_rotation, 
+                                           potential_module_coord, turtle_direction, cell, 
+                                           [None, None, None, None], cell.developed_module,
+                                            slot)
 
-                    cell.developed_module.set_child(new_module, slot)
-
-                    #new_module._parent = cell.developed_module
-                    new_module.substrate_coordinates = potential_module_coord
-                    new_module.turtle_direction = turtle_direction
-                    new_module.direction_from_parent = slot
-                    self.queried_substrate[potential_module_coord] = new_module
-
-                    cell.developed_module.children[slot] = new_module
-                    self.new_cell(cell, new_module, slot)
+                    cell.developed_module.children[slot] = module2add
+                    self.new_cell(cell, module2add, slot)
 
     def decay(self, tf, cell):
         """Goal:
@@ -461,7 +463,7 @@ class DevelopGRN():
             new_cell.transcription_factors[tf] = [0, 0, 0, 0]
 
             # In the case of joint, also shares concentrations of sites without slot
-            if type(source_cell.developed_module) == ActiveHingeV2:
+            if type(source_cell.developed_module.module) == ActiveHingeV2:
                 sites = [CoreV2.LEFT, CoreV2.FRONT, CoreV2.RIGHT]
                 for s in sites:
                     if source_cell.transcription_factors[tf][s] > 0:
