@@ -62,13 +62,13 @@ class BrainGenotypeCpgOrm(orm.MappedAsDataclass, kw_only=True):
 
         # Create a random brain
         brain = random_multineat_genotype(
-            innov_db=innov_db,
-            rng=multineat_rng,
-            multineat_params=_MULTINEAT_PARAMS,
-            output_activation_func=multineat.ActivationFunction.SIGNED_SINE,
+            innov_db = innov_db,
+            rng = multineat_rng,
+            multineat_params = _MULTINEAT_PARAMS,
+            output_activation_func = multineat.ActivationFunction.SIGNED_SINE,
             num_inputs = ninputs,
-            num_outputs=1,  # weight
-            num_initial_mutations=cls._NUM_INITIAL_MUTATIONS,
+            num_outputs = 1, # weight
+            num_initial_mutations = cls._NUM_INITIAL_MUTATIONS,
         )
 
         return BrainGenotypeCpgOrm(brain=brain)
@@ -92,7 +92,7 @@ class BrainGenotypeCpgOrm(orm.MappedAsDataclass, kw_only=True):
         multineat_rng = multineat_rng_from_random(rng)
 
         return BrainGenotypeCpgOrm(
-            brain=self.brain.MutateWithConstraints(
+            brain = self.brain.MutateWithConstraints(
                 False,
                 multineat.SearchMode.BLENDED,
                 innov_db,
@@ -123,7 +123,7 @@ class BrainGenotypeCpgOrm(orm.MappedAsDataclass, kw_only=True):
         multineat_rng = multineat_rng_from_random(rng)
 
         return BrainGenotypeCpgOrm(
-            brain=parent1.brain.MateWithConstraints(
+            brain = parent1.brain.MateWithConstraints(
                 parent2.brain,
                 False,
                 False,
@@ -144,7 +144,7 @@ class BrainGenotypeCpgOrm(orm.MappedAsDataclass, kw_only=True):
         Output:
             The created robot brain
         """
-        return BrainCpgNetworkNeighborV1(genotype=self.brain, body=body, include_bias=include_bias)
+        return BrainCpgNetworkNeighborV1(genotype = self.brain, body = body, include_bias = include_bias)
 
 
 @event.listens_for(BrainGenotypeCpgOrm, "before_update", propagate=True)

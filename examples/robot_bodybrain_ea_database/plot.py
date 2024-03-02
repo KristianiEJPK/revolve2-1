@@ -1,6 +1,9 @@
 """Plot fitness over generations for all experiments, averaged."""
 
 import config
+import os
+os.environ['ALGORITHM'] = config.ALGORITHM
+
 import matplotlib.pyplot as plt
 import pandas
 from experiment import Experiment

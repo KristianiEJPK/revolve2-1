@@ -37,7 +37,7 @@ class DevelopGRN():
     ----------------------------------------------------------------------	
     """
 
-    def __init__(self, max_modules, genotype, querying_seed,):
+    def __init__(self, max_modules, genotype):
         # Initialize
         self.max_modules = max_modules # Maximum number of modules
         self.genotype = genotype # Genotype

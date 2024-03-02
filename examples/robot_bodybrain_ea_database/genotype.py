@@ -44,9 +44,11 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2, BrainGenotypeCpgOrm, BodyMappingS
                 genotype, mapping seed).
         """
         # Set random body and brain
-        body = cls.random_body(innov_db_body, rng, zdirection, include_bias, include_chain_length,
-                               include_empty)
-        brain = cls.random_brain(innov_db_brain, rng, include_bias)
+        body = cls.random_body(innov_db = innov_db_body, rng = rng, zdirection = zdirection, 
+                               include_bias = include_bias, include_chain_length =  include_chain_length,
+                               include_empty = include_empty)
+        
+        brain = cls.random_brain(innov_db = innov_db_brain, rng = rng, include_bias = include_bias)
 
         # Set random mapping seed
         mapping_seed = rng.integers(0, 2 ** 32)
@@ -84,10 +86,10 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2, BrainGenotypeCpgOrm, BodyMappingS
             return self
         else:
             # Mutate body and brain
-            body = self.mutate_body(innov_db_body, rng)
-            brain = self.mutate_brain(innov_db_brain, rng)
+            body = self.mutate_body(innov_db = innov_db_body, rng = rng)
+            brain = self.mutate_brain(innov_db = innov_db_brain, rng = rng)
 
-            return Genotype(body=body.body, brain=brain.brain, mapping_seed = self.mapping_seed)
+            return Genotype(body = body.body, brain = brain.brain, mapping_seed = self.mapping_seed)
 
     @classmethod
     def crossover(
@@ -117,13 +119,13 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2, BrainGenotypeCpgOrm, BodyMappingS
             return parent1
         else:
             # Perform crossover for body and brain
-            body = cls.crossover_body(parent1, parent2, rng)
-            brain = cls.crossover_brain(parent1, parent2, rng)
+            body = cls.crossover_body(parent1 = parent1, parent2 = parent2, rng = rng)
+            brain = cls.crossover_brain(parent1 = parent1, parent2 = parent2, rng = rng)
 
             # Set mapping seed to the first parent's mapping seed
             mapping_seed = parent1.mapping_seed
 
-            return Genotype(body=body.body, brain=brain.brain, mapping_seed = mapping_seed)
+            return Genotype(body = body.body, brain = brain.brain, mapping_seed = mapping_seed)
 
     def develop(self, zdirection, include_bias, include_chain_length, include_empty,
                 max_parts, mode_collision, mode_core_mult, mode_slots4face,
@@ -139,6 +141,12 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2, BrainGenotypeCpgOrm, BodyMappingS
             include_bias: Whether to include the bias as input for CPPN.
             include_chain_length: Whether to include the chain length as input for CPPN.
             include_empty: Whether to include the empty module output as input for CPPN.
+            max_parts: The maximum number of parts.
+            mode_collision: Whether to stop if collision occurs.
+            mode_core_mult: Whether to allow multiple core slots.
+            mode_slots4face: Whether multiple slots can be used for a single face for the core module.
+            mode_slots4face_all: Whether slots can be set for all 9 attachments, or only 3, 4, 5.
+            mode_not_vertical: Whether to disable vertical expansion of the body.
         -------------------------------------------------------------------------------------------
         Output:
             The created robot: ModularRobot.
@@ -150,6 +158,6 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2, BrainGenotypeCpgOrm, BodyMappingS
                                  mode_collision = mode_collision, mode_core_mult = mode_core_mult,
                                  mode_slots4face = mode_slots4face, mode_slots4face_all = mode_slots4face_all,
                                  mode_not_vertical = mode_not_vertical)
-        brain = self.develop_brain(body = body, include_bias = include_bias) # Deze al gedaan!
+        brain = self.develop_brain(body = body, include_bias = include_bias)
 
         return ModularRobot(body = body, brain = brain)

@@ -1,34 +1,32 @@
-"""Main script for the example."""
-
 import logging
 
+# Import the configuration and os.
 import config
 import os
 
-os.environ['ALGORITHM'] = 'GRN'
-
+# Set algorithm
+os.environ['ALGORITHM'] = config.ALGORITHM
 if os.environ["Algorithm"] == "CPPN":
     from genotype import Genotype
 elif os.environ["Algorithm"] == "GRN":
     from genotype_grn import Genotype
 
-import multineat
-import numpy as np
-import numpy.typing as npt
+# Get other packages
 from base import Base
 from evaluator import Evaluator
 from experiment import Experiment
 from generation import Generation
 from individual import Individual
+import multineat
+import numpy as np
+import numpy.typing as npt
 from population import Population
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
-
 from revolve2.experimentation.database import OpenMethod, open_database_sqlite
 from revolve2.experimentation.logging import setup_logging
 from revolve2.experimentation.optimization.ea import population_management, selection
 from revolve2.experimentation.rng import make_rng, seed_from_time
-
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 
 def select_parents(
@@ -79,6 +77,7 @@ def select_survivors(
         rng: Random number generator.
         original_population: The population the parents come from.
         offspring_population: The offspring.
+        survivor_tournament_size: The size of the tournament to select survivors.
     -------------------------------------------------------------------------------------------
     Output: 
         A newly created population.
@@ -151,19 +150,20 @@ def run_experiment(dbengine: Engine) -> None:
     rng = make_rng(rng_seed)
 
     # ---- Create and save the experiment instance.
-    experiment = Experiment(rng_seed=rng_seed)
+    experiment = Experiment(rng_seed = rng_seed)
     logging.info("Saving experiment configuration.")
     with Session(dbengine) as session:
         session.add(experiment)
         session.commit()
 
     # ---- Intialize the evaluator that will be used to evaluate robots.
-    evaluator = Evaluator(headless=True, num_simulators = config.NUM_SIMULATORS, 
+    evaluator = Evaluator(headless = True, num_simulators = config.NUM_SIMULATORS, 
                           terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
                           simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY, 
                           simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY)
 
     # ---- CPPN innovation databases.
+    # Niet nodig voor GRN???
     innov_db_body = multineat.InnovationDatabase()
     innov_db_brain = multineat.InnovationDatabase()
 
@@ -172,8 +172,8 @@ def run_experiment(dbengine: Engine) -> None:
     if os.environ["ALGORITHM"] == "CPPN":
         initial_genotypes = [
             Genotype.random(
-                innov_db_body=innov_db_body,
-                innov_db_brain=innov_db_brain,
+                innov_db_body = innov_db_body,
+                innov_db_brain = innov_db_brain,
                 rng=rng, zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
                 include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
 
@@ -183,24 +183,28 @@ def run_experiment(dbengine: Engine) -> None:
     elif os.environ["ALGORITHM"] == "GRN":
         initial_genotypes = [
             Genotype.random(
-                innov_db_body=innov_db_body,
-                innov_db_brain=innov_db_brain,
-                rng=rng, zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
-                include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
-
+                innov_db_brain = innov_db_brain,
+                rng = rng, include_bias = config.CPPNBIAS,
             )
             for _ in range(config.POPULATION_SIZE)
         ]
     # Evaluate the initial population.
     logging.info("Evaluating initial population.")
-    initial_fitnesses = evaluator.evaluate(
-        [genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
-            include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
-            max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
-            mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
-            mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL
-            ) for genotype in initial_genotypes],
-    )
+    if os.environ["ALGORITHM"] == "CPPN":
+        initial_fitnesses = evaluator.evaluate(
+            [genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
+                include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
+                max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
+                mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
+                mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL
+                ) for genotype in initial_genotypes],
+        )
+    elif os.environ["ALGORITHM"] == "GRN":
+        initial_fitnesses = evaluator.evaluate(
+            [genotype.develop(include_bias = config.CPPNBIAS,
+                max_parts = config.MAX_PARTS
+                ) for genotype in initial_genotypes],
+        )
 
 
     # Create a population of individuals, combining genotype with fitness.
@@ -240,25 +244,32 @@ def run_experiment(dbengine: Engine) -> None:
                 ).mutate(innov_db_body, innov_db_brain, rng, config.MUTATION_PROBABILITY)
                 for parent1_i, parent2_i in parents
             ]
-        elif os.environ["ALGORITHM"] == "GRN":
+        elif os.environ["ALGORITHM"] == "GRN": # Crossover klopt nog niet helemaal?
             offspring_genotypes = [
                 Genotype.crossover(
                     population.individuals[parent1_i].genotype,
                     population.individuals[parent2_i].genotype,
                     rng, config.CROSSOVER_PROBABILITY	
-                ).mutate(innov_db_body, innov_db_brain, rng, config.MUTATION_PROBABILITY)
+                ).mutate(innov_db_brain, rng, config.MUTATION_PROBABILITY)
                 for parent1_i, parent2_i in parents
             ]
 
         # Evaluate the offspring.
-        offspring_fitnesses = evaluator.evaluate(
-            [genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
-            include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
-            max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
-            mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
-            mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL
-            ) for genotype in offspring_genotypes]
-        )
+        if os.environ["ALGORITHM"] == "CPPN":
+            offspring_fitnesses = evaluator.evaluate(
+                [genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
+                include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
+                max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
+                mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
+                mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL
+                ) for genotype in offspring_genotypes]
+            )
+        elif os.environ["ALGORITHM"] == "GRN":
+            offspring_fitnesses = evaluator.evaluate(
+                [genotype.develop(include_bias = config.CPPNBIAS,
+                max_parts = config.MAX_PARTS
+                ) for genotype in offspring_genotypes]
+            )
 
         # Make an intermediate offspring population.
         offspring_population = Population(

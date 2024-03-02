@@ -74,13 +74,13 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
 
         # Create a random body
         body = random_multineat_genotype(
-            innov_db=innov_db,
-            rng=multineat_rng,
-            multineat_params=cls._MULTINEAT_PARAMS,
-            output_activation_func=multineat.ActivationFunction.TANH,
+            innov_db = innov_db,
+            rng = multineat_rng,
+            multineat_params = cls._MULTINEAT_PARAMS,
+            output_activation_func = multineat.ActivationFunction.TANH,
             num_inputs = num_inputs,
             num_outputs = num_outputs,
-            num_initial_mutations=cls._NUM_INITIAL_MUTATIONS,
+            num_initial_mutations = cls._NUM_INITIAL_MUTATIONS,
         )
 
         return BodyGenotypeOrmV2(body=body)
@@ -105,7 +105,7 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
         multineat_rng = multineat_rng_from_random(rng)
 
         return BodyGenotypeOrmV2(
-            body=self.body.MutateWithConstraints(
+            body = self.body.MutateWithConstraints(
                 False,
                 multineat.SearchMode.BLENDED,
                 innov_db,
@@ -137,7 +137,7 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
         multineat_rng = multineat_rng_from_random(rng)
 
         return BodyGenotypeOrmV2(
-            body=parent1.body.MateWithConstraints(
+            body = parent1.body.MateWithConstraints(
                 parent2.body,
                 False,
                 False,
@@ -154,7 +154,20 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
         Goal:
             Develop the genotype into a modular robot.
         -------------------------------------------------------------------------------------------
-        Output: T
+        Input:
+            querying_seed: The seed for the querying of the robot.
+            zdirection: Whether to include the z direction  as input for CPPN.
+            include_bias: Whether to include the bias as input for CPPN.
+            include_chain_length: Whether to include the chain length as input for CPPN.
+            include_empty: Whether to include the empty module output for CPPN.
+            max_parts: The maximum number of parts for the robot.
+            mode_collision: Whether to stop if collision occurs.
+            mode_core_mult: Whether to allow multiple core slots.
+            mode_slots4face: Whether multiple slots can be used for a single face for the core module.
+            mode_slots4face_all: Whether slots can be set for all 9 attachments, or only 3, 4, 5.
+            mode_not_vertical: Whether to disable vertical expansion of the body.
+        -------------------------------------------------------------------------------------------
+        Output:
             The created robot.
         """
         return develop(self.body, querying_seed, zdirection = zdirection, 

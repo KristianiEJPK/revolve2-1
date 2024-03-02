@@ -106,10 +106,10 @@ class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
                 # If the nucleotide value is less than the promoter threshold
                 if parent[nucleotide_idx] < promoter_threshold:
                     # If there are nucleotides enough to compose a gene
-                    if (len(parent) - 1 - nucleotide_idx) >= types_nucleotypes: # ???? (e.g. 6 - 1 - 0) = 5 != 6
+                    if (len(parent) - 1 - nucleotide_idx) >= types_nucleotypes:
                         promotor_sites.append(nucleotide_idx)
                         nucleotide_idx += types_nucleotypes
-                nucleotide_idx += 1 # ???? Is there also a nucleotide skipped in between?
+                nucleotide_idx += 1
 
             # Sample a promotor site
             cutpoint = rng.choice(promotor_sites, 1)[0]
@@ -120,7 +120,7 @@ class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
 
         return BodyGenotypeOrmV2GRN(body = new_genotype)
     
-    def develop_body(self: object, max_parts: int, querying_seed: int) -> BodyV2:
+    def develop_body(self: object, max_parts: int) -> BodyV2:
         """
         Goal:
             Develop the genotype into a modular robot.
@@ -128,7 +128,7 @@ class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
         Output:
             The created robot.
         """
-        return DevelopGRN(max_parts, self.body, querying_seed).develop()
+        return DevelopGRN(max_parts, self.body).develop()
 
 
 

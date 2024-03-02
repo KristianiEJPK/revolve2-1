@@ -35,8 +35,6 @@ class __Module:
     rotation_index: int
     _absolute_rotation: int
     module_reference: Module
-
-# Have to check the coordinate system!!!!
     
 def develop(
     genotype: multineat.Genome, querying_seed: int, zdirection: bool, 
@@ -66,18 +64,7 @@ def develop(
     Output:
         The createD body."""
     # ---- Initialize
-    # Modifiable parameters
-    # max_parts = 20 # Maximum number of parts in the body --> better pass as parameter???? 
-    
-    # mode_collision = True # Whether to stop if collision occurs
-    # mode_core_mult = False # Whether to allow multiple core slots
-    # mode_slots4face = False # Whether multiple slots can be used for a single face for the core module
-    # mode_slots4face_all = False # Whether slots can be set for all 9 attachments, or only 3, 4, 5
-    # mode_not_vertical = True # Whether to disable vertical expansion of the body
-
-
-    # Internal parameters
-    rng = random.Random(querying_seed)
+    rng = random.Random(querying_seed) # Random number generator
     collision = False # If the body has collided with itself
     part_count = 0 # Number of body parts
     to_explore = [] # The modules which can be explored for adding more modules. Each item is a module's specific attachment face
@@ -126,7 +113,7 @@ def develop(
     # ---- Explore all attachment points for development --> recursive
     for _ in range(0, max_parts):
         # Get parent module and id from "to_explore"
-        module = to_explore[0]#rng.choice(to_explore)
+        module = rng.choice(to_explore)
         module_id = module.module_reference.uuid
 
         # Get all attachment points of the module
@@ -146,8 +133,7 @@ def develop(
                     for att_tup in attachment_point_tuples_all:
                         if att_tup[0] in [0, 1, 2, 6, 7, 8]:
                             explored_modules[module_id][0].append(att_tup)
-                
-                ## Get the min and max values of the attachment points --> used to adapt the core position later on!
+                # Get the min and max values of the attachment points --> used to adapt the core position later on!
                 if mode_core_mult:
                     # Offset of attachment points
                     att_arr = [] 
@@ -360,8 +346,7 @@ def __add_child(
     if grid[tuple(position)] > 0:
         return False, None # False means that the cell is occupied
     else:
-        # # Occupy cell
-        # grid[tuple(position)] += 1
+        # Occupy cell
         # Increase chain length
         chain_length = module.chain_length + 1
         
@@ -377,7 +362,6 @@ def __add_child(
         grid[tuple(position)] = 4
 
     # ---- Adapt rotation
-    # _absolute_rotation
     absolute_rotation = 0
     if zdirection == False:
         # Rotation always 0 for brick

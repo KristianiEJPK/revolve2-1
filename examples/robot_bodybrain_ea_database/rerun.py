@@ -5,7 +5,7 @@ import logging
 import config
 from evaluator import Evaluator
 import os
-os.environ['ALGORITHM'] = 'GRN'
+os.environ['ALGORITHM'] = config.ALGORITHM
 
 if os.environ["Algorithm"] == "CPPN":
     from genotype import Genotype
@@ -36,15 +36,19 @@ def main() -> None:
         ).fetchall() #.one()
         #assert row is not None
         
-    for row in rows[0:]:
+    for row in rows[30:]:
         genotype = row[0]
         fitness = row[1]
 
-        modular_robot = genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
-            include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
-            max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
-            mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
-            mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL)
+        if os.environ["Algorithm"] == "CPPN":
+            modular_robot = genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
+                include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
+                max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
+                mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
+                mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL)
+        elif os.environ["Algorithm"] == "GRN":
+            modular_robot = genotype.develop(include_bias = config.CPPNBIAS, max_parts = config.MAX_PARTS)
+
 
         logging.info(f"Best fitness: {fitness}")
 
