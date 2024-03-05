@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 import math
 import numpy as np
@@ -276,7 +277,7 @@ class DevelopGRN():
     def increase(self, tf, cell):
         """Goal:
             Increases the amount of a transcription factor in a cell."""
-        # Increase concentration in due diffusion sites
+        # Increase concentration at the diffusion sites
         tf_promotors = np.where(self.promotors[:, self.transcription_factor_idx] == tf)[0] # Where the trancription factor matches the tf
         for tf_promotor_idx in tf_promotors:
             cell.transcription_factors[tf][int(self.promotors[tf_promotor_idx][self.diffusion_site_idx])] += \
@@ -307,7 +308,7 @@ class DevelopGRN():
         """Goal: Performs inter diffusion of a transcription factor between cells."""
         # For each diffusion site
         for ds in range(0, self.diffusion_sites_qt):
-            # If diffusion site is the back of the core module, and the developed cell is a hinge or a brick
+            # If diffusion site is the back (non-core) and the developed cell is a hinge or a brick
             if (ds == CoreV2.BACK) and \
                     (type(cell.developed_module.module) == ActiveHingeV2 or type(cell.developed_module.module) == BrickV2):
                 # If transcription factor concentration is equal or greater than the inter diffusion rate
@@ -321,7 +322,7 @@ class DevelopGRN():
                         cell.developed_module._parent.cell.transcription_factors[tf] = [0] * self.diffusion_sites_qt
                         cell.developed_module._parent.cell.transcription_factors[tf][cell.developed_module.direction_from_parent] += self.inter_diffusion_rate
 
-            # If diffusion site is not the back of the core module, and the developed cell is a hinge --> also share from other sides without slots
+            # If diffusion site is not the back and the developed cell is a hinge --> also share from other sides without slots
             elif (type(cell.developed_module.module) == ActiveHingeV2) and \
                     ds in [CoreV2.LEFT, CoreV2.FRONT, CoreV2.RIGHT]:
                 # If the front side is not None and transcription factor concentration is equal or greater than the inter diffusion rate
@@ -382,13 +383,13 @@ class DevelopGRN():
             # Grows in the free diffusion site with the highest concentration
             freeslots = np.array([c is None for c in cell.developed_module.children])
             if type(cell.developed_module.module) == BrickV2:
-                #freeslots[CoreV2.BACK] = False #np.append(freeslots, [False]) # Brick has no back
-                freeslots[-1] = False
+                freeslots[CoreV2.BACK] = False #np.append(freeslots, [False]) # Brick has no back
+                #freeslots[-1] = False
             elif type(cell.developed_module.module) == ActiveHingeV2:
-                freeslots[1:] = False
-                # freeslots[CoreV2.BACK] = False
-                # freeslots[CoreV2.LEFT] = False
-                # freeslots[CoreV2.RIGHT] = False #np.append(freeslots, [False, False, False]) # Joint has no back nor left or right
+                #freeslots[1:] = False
+                freeslots[CoreV2.BACK] = False
+                freeslots[CoreV2.LEFT] = False
+                freeslots[CoreV2.RIGHT] = False # Joint has no back nor left or right
 
             # If free slots
             if any(freeslots):
@@ -398,12 +399,19 @@ class DevelopGRN():
                 values_at_true_indices = np.array(cell.transcription_factors[product_tfs[idx_max]])[true_indices]
                 # Max value
                 max_value_index = np.argmax(values_at_true_indices)
-                # Index of max is new slot
+                # Index of max is new slot (coordinates calculation)
                 position_of_max_value = true_indices[max_value_index]
-                slot = position_of_max_value
+                slot4coordinates = position_of_max_value # !!!
+                # Adapt slot for setting of children
+                if type(cell.developed_module.module) == ActiveHingeV2:
+                    slot = 0
+                elif type(cell.developed_module.module) == BrickV2:
+                    slot = slot4coordinates - (1 * (slot4coordinates > CoreV2.BACK))
+                else: # CoreV2
+                    slot = deepcopy(slot4coordinates)
 
                 # Get coordinates and turtle direction
-                potential_module_coord, turtle_direction = self.calculate_coordinates(cell.developed_module, slot)
+                potential_module_coord, turtle_direction = self.calculate_coordinates(cell.developed_module, slot4coordinates)
                 if (potential_module_coord not in self.queried_substrate.keys()) and (self.quantity_modules < self.max_modules - 1):
                     module_type = modules_types[idx_max]
 
@@ -434,14 +442,14 @@ class DevelopGRN():
                     self.queried_substrate[potential_module_coord] = new_module
                     self.quantity_modules += 1
 
-                    #numberofslots = len(list(new_module.attachment_points.keys()))
+                    # Create wrapper for new module
                     module2add = ModuleGRN(new_module, str(self.quantity_modules), absolute_rotation, 
                                            potential_module_coord, turtle_direction, cell, 
                                            [None, None, None, None], cell.developed_module,
-                                            slot)
+                                            slot4coordinates)
 
-                    cell.developed_module.children[slot] = module2add
-                    self.new_cell(cell, module2add, slot)
+                    cell.developed_module.children[slot4coordinates] = module2add
+                    self.new_cell(cell, module2add, slot4coordinates)
 
     def decay(self, tf, cell):
         """Goal:
@@ -524,24 +532,6 @@ class DevelopGRN():
 
         return coordinates, turtle_direction
 
-    def get_color(self, module_type, rotation):
-        """Goal:
-            Get the color of a module."""
-        # Initialize
-        rgb = []
-        # Get color
-        if module_type == BrickV2:
-            rgb = [0, 0, 1]
-        elif module_type == ActiveHingeV2:
-            if rotation == 0:
-                rgb = [1, 0.08, 0.58]
-            else:
-                rgb = [0.7, 0, 0]
-        elif module_type == CoreV2:
-            rgb = [1, 1, 0]
-        else: raise ValueError(f'Unknown module type: {module_type}')
-
-        return rgb
 class Cell:
     """Goal:
         Class to model a cell.

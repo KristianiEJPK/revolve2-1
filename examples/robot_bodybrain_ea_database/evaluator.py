@@ -1,6 +1,7 @@
 """Evaluator class."""
-
+import config
 from revolve2.ci_group import fitness_functions, terrains
+from revolve2.ci_group.morphological_measures import MorphologicalMeasures
 from revolve2.simulation.simulator import BatchParameters
 from revolve2.modular_robot import ModularRobot
 from revolve2.modular_robot_simulation import (
@@ -9,6 +10,7 @@ from revolve2.modular_robot_simulation import (
     simulate_scenes,
 )
 from revolve2.simulators.mujoco_simulator import LocalSimulator
+
 
 
 class Evaluator:
@@ -39,7 +41,7 @@ class Evaluator:
         """
         # ---- Set the simulator.
         self._simulator = LocalSimulator(
-            headless=headless, num_simulators=num_simulators
+            headless = headless, num_simulators=num_simulators
         )
 
         # ---- Set the simulation parameters.
@@ -55,7 +57,7 @@ class Evaluator:
             raise ValueError(f"Unknown terrain: {terrain}")
         
         # ---- Set the fitness function.
-        if fitness_function in ["xy_displacement", "x_speed_Miras2021"]:
+        if fitness_function in ["xy_displacement", "x_speed_Miras2021", "x_efficiency"]:
             self.fitness_function = fitness_function
         else:
             raise ValueError(f"Unknown fitness function: {fitness_function}")
@@ -97,6 +99,7 @@ class Evaluator:
         )
 
         # ---- Calculate the fitnesses.
+        
         if self.fitness_function == "xy_displacement":
             fitnesses = [
                 fitness_functions.xy_displacement(
@@ -113,5 +116,13 @@ class Evaluator:
                 )
                 for robot, states in zip(robots, scene_states)
             ]
+        elif self.fitness_function == "x_efficiency":
+            fitnesses = [
+                fitness_functions.x_efficiency(
+                    states = states, robot = robot, simulation_time = self.simulation_time
+                )
+                for robot, states in zip(robots, scene_states)
+            ]
+
 
         return fitnesses

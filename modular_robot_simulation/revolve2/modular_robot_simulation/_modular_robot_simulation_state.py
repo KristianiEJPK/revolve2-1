@@ -1,6 +1,6 @@
 from revolve2.modular_robot.body import Module
 from revolve2.simulation.scene import MultiBodySystem, Pose, SimulationState
-
+import numpy as np
 
 class ModularRobotSimulationState:
     """The state of a modular robot at some moment in a simulation."""
@@ -54,3 +54,10 @@ class ModularRobotSimulationState:
         """
         raise NotImplementedError()
         return Pose()
+    
+    def get_actuator_force(self) -> np.ndarray[float]:
+        """Goal:
+            Get the force delivered by the actuators.
+        ------------------------------------------------
+        """
+        return self._simulation_state.get_actuator_force()

@@ -5,6 +5,7 @@ from pyrr import Vector3
 from ._imu_sensor import IMUSensor
 from ._joint_hinge import JointHinge
 from ._multi_body_system import MultiBodySystem
+import numpy as np
 from ._pose import Pose
 from ._rigid_body import RigidBody
 
@@ -64,4 +65,15 @@ class SimulationState(ABC):
 
         :param imu_sensor: The IMU.
         :returns: The angular rate.
+        """
+    
+    @abstractmethod
+    def get_actuator_force(self) -> np.ndarray[float]:
+        """Goal:
+            Get the force delivered by the actuators.
+        ------------------------------------------------
+        Input:
+        ------------------------------------------------
+        Output: 
+            The force delivered by the actuators.
         """

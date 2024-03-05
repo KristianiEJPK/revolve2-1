@@ -85,17 +85,20 @@ class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
         parent2: Self,
         rng: np.random.Generator,
     ) -> BodyGenotypeOrmV2GRN:
+        # Get genotypes
+        genotype1 = parent1.body
+        genotype2 = parent2.body
 
         # Set promoter threshold and number of nucleotypes 
         promoter_threshold = 0.8
         types_nucleotypes = 6
 
         # The first nucleotide is the concentration --> average of the parents
-        new_genotype = [(parent1.genotype[0] + parent2.genotype[0])/2]
+        new_genotype = [(genotype1[0] + genotype2[0])/2]
 
         # Get remaining nucleotides from parents
-        p1 = parent1.genotype[1:]
-        p2 = parent2.genotype[1:]
+        p1 = genotype1[1:]
+        p2 = genotype2[1:]
 
         # Get new genotype
         for parent in [p1, p2]:

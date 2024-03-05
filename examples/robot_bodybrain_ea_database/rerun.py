@@ -36,7 +36,7 @@ def main() -> None:
         ).fetchall() #.one()
         #assert row is not None
         
-    for row in rows[30:]:
+    for row in rows[0:]:
         genotype = row[0]
         fitness = row[1]
 
@@ -48,7 +48,6 @@ def main() -> None:
                 mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL)
         elif os.environ["Algorithm"] == "GRN":
             modular_robot = genotype.develop(include_bias = config.CPPNBIAS, max_parts = config.MAX_PARTS)
-
 
         logging.info(f"Best fitness: {fitness}")
 

@@ -23,6 +23,7 @@ class SimulationStateImpl(SimulationState):
     _xquat: npt.NDArray[np.float_]
     _qpos: npt.NDArray[np.float_]
     _sensordata: npt.NDArray[np.float_]
+    _actuator_force: npt.NDArray[np.float_]
     _abstraction_to_mujoco_mapping: AbstractionToMujocoMapping
 
     def __init__(
@@ -43,6 +44,11 @@ class SimulationStateImpl(SimulationState):
         self._xquat = data.xquat.copy()
         self._qpos = data.qpos.copy()
         self._sensordata = data.sensordata.copy()
+        self._actuator_force = data.actuator_force.copy()
+        #print(data.actuator_force)
+        #print(data.actuator_length)
+        #print(data.actuator_velocity)
+        #print(data.actuator_moment)
         self._abstraction_to_mujoco_mapping = abstraction_to_mujoco_mapping
 
     def get_rigid_body_relative_pose(self, rigid_body: RigidBody) -> Pose:
@@ -117,3 +123,11 @@ class SimulationStateImpl(SimulationState):
         ].gyro_id
         angular_rate = self._sensordata[gyro_id : gyro_id + 3]
         return Vector3(angular_rate)
+
+    def get_actuator_force(self) -> npt.NDArray[np.float_]:
+        """Goal:
+            Get the force delivered by the actuators.
+        ------------------------------------------------
+        """
+
+        return self._actuator_force.copy()
