@@ -1,12 +1,14 @@
 import math
 from typing import Generic, Type, TypeVar
 
+from copy import deepcopy
 import numpy as np
 from numpy.typing import NDArray
 from pyrr import Quaternion, Vector3
 
 from .._module import Module
 from ._core import Core
+
 
 TModule = TypeVar("TModule", bound=Module)
 TModuleNP = TypeVar("TModuleNP", bound=np.generic)
@@ -117,7 +119,13 @@ class _GridMaker(Generic[TModuleNP]):
 
     def make_grid(self, body: Body) -> tuple[NDArray[TModuleNP], Vector3[np.int_]]:
 
-        self._make_grid_recur(body._core, Vector3(), Quaternion())
+        for child_index, _ in body._core.attachment_points.items():
+            print("************************************************")
+            # Get child
+            child = body._core.children.get(child_index)
+            # Get grid
+            self._make_grid_recur(child, Vector3([0, 0, 0]), 
+                                Vector3([1, 0, 0]), Vector3([0, 0, 1]), )
 
         minx, maxx = min(self._x), max(self._x)
         miny, maxy = min(self._y), max(self._y)
@@ -126,9 +134,6 @@ class _GridMaker(Generic[TModuleNP]):
         depth = maxx - minx + 1
         width = maxy - miny + 1
         height = maxz - minz + 1
-        print(self._x)
-        print(self._y)
-        print(self._z)
 
         grid = np.empty(shape=(depth, width, height), dtype=Module)
         grid.fill(None)
@@ -138,22 +143,70 @@ class _GridMaker(Generic[TModuleNP]):
         return grid, Vector3([-minx, -miny, -minz])
 
     def _make_grid_recur(
-        self, module: Module, position: Vector3, orientation: Quaternion
+        self, module: Module, position: Vector3, forward: Vector3, up: Vector3
     ) -> None:
+        
+        # Do not add the attachment points of the core.
         self._add(position, module)
+        print("Module: ", module)
+        print("Position: ", position)
+        print("---------------------------")
 
+        if position == Vector3([0, 0, 0]):
+            # ----- Get...
+            minsmaxs = []
+            # Offset of attachment points
+            att_arr = [] 
+            for att in module.attachment_points.items():
+                transf_off = rotatevectors(att[1].offset, up, att[1].orientation)
+                att_arr.append(transf_off)
+            att_arr = np.array(att_arr)
+            # Min and max values of the attachment points
+            minsmaxs.append(att_arr.min(axis = 0))
+            minsmaxs.append(att_arr.max(axis = 0))
+
+            # # Fill core values
+            # for att in module.attachment_points.items():
+            #     forward4face = rotatevectors(forward, up, att[1].orientation)
+            #     self._add(position + forward4face, module)
+
+        # Rotate forward
+        forwardrot = rotatevectors(forward, up, module.attachment_points[0].orientation)
+
+        # Go on
         for child_index, attachment_point in module.attachment_points.items():
+            # Get child
             child = module.children.get(child_index)
+            if position == Vector3([0, 0, 0]):
+                # Get relative location of slot within face
+                middle = np.mean(minsmaxs, axis = 0)
+                divider = (minsmaxs[1] - middle) # maximum slot location - middle, both are transformed already
+                divider[divider == 0] = 1 # To prevent division by zero
+                offset_pos = rotatevectors(attachment_point.offset, up, attachment_point.orientation) # Transform offset
+                rellocslot_raw = (offset_pos - middle)
+                rellocslot = (rellocslot_raw / divider) # to -1, 0, 1
+                # Add 1 additional for forward position --> 3 x 3 x 3 core instead of 1 x 1 x 1
+                rellocslot = forwardrot + rellocslot
+                
+                # Set those points
+                self._add(position + rellocslot, module)
+            else: 
+                rellocslot = Vector3([0, 0, 0])
+            
             if child is not None:
                 assert np.isclose(child.rotation % (math.pi / 2.0), 0.0)
-                rotation = (
-                    orientation
-                    * attachment_point.orientation
-                    * Quaternion.from_eulers([child.rotation, 0, 0])
-                )
-                self._make_grid_recur(
-                    child, position + rotation * Vector3([1.0, 0.0, 0.0]), rotation
-                )
+                # rotation = (
+                #     orientation
+                #     * attachment_point.orientation
+                #     * Quaternion.from_eulers([child.rotation, 0, 0])
+                # )
+                forward_new = rotatevectors(forward, up, attachment_point.orientation)
+                position_new = position + forward_new + rellocslot
+                up_new = rotatevectors(up, forward_new, Quaternion.from_eulers([child.rotation, 0, 0]))
+                
+                self._make_grid_recur(child, position_new, forward_new, up_new)
+
+                
 
     def _add(self, position: Vector3, module: Module) -> None:
         self._modules.append(module)
@@ -161,3 +214,21 @@ class _GridMaker(Generic[TModuleNP]):
         self._x.append(int(round(x)))
         self._y.append(int(round(y)))
         self._z.append(int(round(z)))
+
+
+def rotatevectors(a: Vector3, b: Vector3, rotation: Quaternion) -> Vector3:
+    """
+    Rotates vector a a given angle around b.
+
+    :param a: Vector a.
+    :param b: Vector b.
+    :param rotation: The quaternion for rotation.
+    :returns: A copy of a, rotated.
+    """
+    cos_angle: int = int(round(np.cos(rotation.angle)))
+    sin_angle: int = int(round(np.sin(rotation.angle)))
+
+    vec: Vector3 = (
+        a * cos_angle + sin_angle * b.cross(a) + (1 - cos_angle) * b.dot(a) * b
+    )
+    return vec

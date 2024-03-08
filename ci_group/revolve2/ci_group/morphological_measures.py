@@ -9,7 +9,7 @@ from pyrr import Vector3
 
 from revolve2.modular_robot.body import Module
 from revolve2.modular_robot.body.base import ActiveHinge, Body, Brick, Core
-from revolve2.modular_robot.body.v2._active_hinge_v2 import ActiveHingeV2
+from revolve2.modular_robot.body.v2 import ActiveHingeV2, BrickV2
 from revolve2.modular_robot.body.v2._attachment_face_core_v2 import AttachmentFaceCoreV2
 
 TModule = TypeVar("TModule", bound=np.generic)
@@ -115,8 +115,29 @@ class MorphologicalMeasures(Generic[TModule]):
         # Other measures
         self.grid, self.core_grid_position = body.to_grid()
         import matplotlib.pyplot as plt
-        plt.imshow(np.where(self.grid != None, 1, 0))
+        newgrid = deepcopy(self.grid)
+        z = 1
+        for x, y in product(range(self.grid.shape[0]), range(self.grid.shape[1])):
+            print(type(self.grid[x, y, z]))
+            if type(self.grid[x, y, z]) == BrickV2:
+                newgrid[x, y, z] = 3
+            elif type(self.grid[x, y, z]) == ActiveHingeV2:
+                newgrid[x, y, z] = 2
+            elif type(self.grid[x, y, z]) == AttachmentFaceCoreV2:
+                newgrid[x, y, z] = 1
+            elif type(self.grid[x, y, z]) == Core:
+                newgrid[x, y, z] = 1
+            else:
+                newgrid[x, y, z] = 0
+        # Create a custom colormap with 4 colors
+        cmap = plt.cm.colors.ListedColormap(['grey', 'red', 'white', 'blue'])
+
+        # Create a normalized color map
+        norm = plt.cm.colors.Normalize(vmin = 0, vmax = 3)
+        #print(newgrid)
+        plt.imshow(newgrid[:, :, z].astype(int), cmap = cmap, norm = norm)
         plt.show()
+        # Blauwe zit nog aan verkeerde kant? --> oplossen!!!!
 
         vmb
         self.core = body.core
