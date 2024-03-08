@@ -126,6 +126,9 @@ class _GridMaker(Generic[TModuleNP]):
         depth = maxx - minx + 1
         width = maxy - miny + 1
         height = maxz - minz + 1
+        print(self._x)
+        print(self._y)
+        print(self._z)
 
         grid = np.empty(shape=(depth, width, height), dtype=Module)
         grid.fill(None)

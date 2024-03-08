@@ -111,15 +111,14 @@ class Evaluator:
             print("Length of Limbs (meanrel): ", meanrel_length)
             print("Length of Limbs (stdrel): ", stdrel_length)
 
-            print("Joints: ", morphological_measures.joints) # Deze klopt nog niet ---> attached to brick or core!!!!!!!!!
+            print("Joints: ", morphological_measures.joints)
             print("Joint-Brick Ratio: ", morphological_measures.joint_brick_ratio)
             
-            
-            # Misschien ook nog een joint/brick ratio?
 
             print("Symmetry: ", morphological_measures.symmetry)
             print("Coverage: ", morphological_measures.coverage)
             print("Branching: ", morphological_measures.branching)
+            print("Surface: ", morphological_measures.surface)
 
             print("Number of Modules: ", morphological_measures.num_modules)
             print("Number of Active Hinges: ", morphological_measures.num_active_hinges)
