@@ -102,11 +102,15 @@ def develop(
         assert np.sum(grid) == 1, f"Error: The core is not placed correctly in the grid. Sum: {np.sum(grid)}."
 
     # Add all attachment faces to the 'explore_list'
-    for attachment_face in v2_core.attachment_faces.values():
+    for idx_attachment, attachment_face in v2_core.attachment_faces.items():
+        if idx_attachment in [0, 2]:
+            forward = Vector3([1, 0, 0])
+        else:
+            forward = Vector3([-1, 0, 0])
         to_explore.append(
             __Module(
                 core_position,
-                Vector3([1, 0, 0]), # Here I changed the forward direction, because it seems not to be in line with the face coordinates
+                forward, # Here I changed the forward direction, because it seems not to be in line with the face coordinates
                 Vector3([0, 0, 1]),
                 0, "Core", 0, 0, attachment_face,))
 
@@ -125,14 +129,16 @@ def develop(
             if module.position == core_position: # Core module
                 assert len(attachment_point_tuples_all) == 9, f"Error: The core module does not have 9 attachment points. Length: {len(attachment_point_tuples_all)}."
                 # Eliminate attachment points?
-                if mode_core_mult == False: # Keep only middle attachment point
+                if (mode_core_mult == False) or (mode_slots4face == False): # Keep only middle attachment point
                     for att_tup in attachment_point_tuples_all:
                         if att_tup[0] in [0, 1, 2, 3, 5, 6, 7, 8]:
                             explored_modules[module_id][0].append(att_tup)
-                elif mode_slots4face_all == False: # Keep only middle (row's) attachment points
+                elif (mode_slots4face_all == False): # Keep only middle (row's) attachment points
                     for att_tup in attachment_point_tuples_all:
                         if att_tup[0] in [0, 1, 2, 6, 7, 8]:
                             explored_modules[module_id][0].append(att_tup)
+                else:
+                    assert mode_slots4face, "Error: The mode for slots4face is not set correctly."
                 # Get the min and max values of the attachment points --> used to adapt the core position later on!
                 if mode_core_mult:
                     # Offset of attachment points
@@ -207,12 +213,12 @@ def develop(
     # Create a normalized color map
     norm = plt.cm.colors.Normalize(vmin=0, vmax=4)
 
-    # # Create an array of colors based on the values
-    # plt.imshow(grid[:, :, core_position[2]], cmap = cmap, norm = norm)
-    # plt.xticks(np.arange(0, grid.shape[0], 1))
-    # plt.yticks(np.arange(0, grid.shape[1], 1))
-    # plt.grid(True, which='both')
-    # plt.show()
+    # Create an array of colors based on the values
+    plt.imshow(grid[:, :, core_position[2]], cmap = cmap, norm = norm)
+    plt.xticks(np.arange(0, grid.shape[0], 1))
+    plt.yticks(np.arange(0, grid.shape[1], 1))
+    plt.grid(True, which='both')
+    plt.show()
     
     return body
 

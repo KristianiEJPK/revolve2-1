@@ -112,20 +112,35 @@ class Body:
 
 
 class _GridMaker(Generic[TModuleNP]):
-    _x: list[int] = []
-    _y: list[int] = []
-    _z: list[int] = []
-    _modules: list[Module] = []
+
+    def __init__(self) -> None:
+        self._x: list[int] = []
+        self._y: list[int] = []
+        self._z: list[int] = []
+        self._modules: list[Module] = []
 
     def make_grid(self, body: Body) -> tuple[NDArray[TModuleNP], Vector3[np.int_]]:
-
+        """Goal:
+            Create a grid from the body.
+        -------------------------------------------------------------------------------------------
+        Input:
+            body: The body.
+        -------------------------------------------------------------------------------------------
+        Output:
+            The created grid with cells set to either a Module or None and a position vector of the core. The position Vector3 is dtype: int.
+        """
+        # Loop through the attachment points
         for child_index, _ in body._core.attachment_points.items():
-            print("************************************************")
             # Get child
             child = body._core.children.get(child_index)
-            # Get grid
+            # Set forward orientation --> somehow orientation is fucked up so had to change along axis
+            if child_index in [0, 2]:
+                forward = Vector3([1, 0, 0])
+            else:
+                forward = Vector3([-1, 0, 0])
+            # Recursively loop through orientation points
             self._make_grid_recur(child, Vector3([0, 0, 0]), 
-                                Vector3([1, 0, 0]), Vector3([0, 0, 1]), )
+                                forward, Vector3([0, 0, 1]), )
 
         minx, maxx = min(self._x), max(self._x)
         miny, maxy = min(self._y), max(self._y)
@@ -146,37 +161,30 @@ class _GridMaker(Generic[TModuleNP]):
         self, module: Module, position: Vector3, forward: Vector3, up: Vector3
     ) -> None:
         
-        # Do not add the attachment points of the core.
+        # Add the module to the grid
         self._add(position, module)
-        print("Module: ", module)
-        print("Position: ", position)
-        print("---------------------------")
 
-        if position == Vector3([0, 0, 0]):
-            # ----- Get...
-            minsmaxs = []
-            # Offset of attachment points
-            att_arr = [] 
+        # Get relative attachment points
+        if position == Vector3([0, 0, 0]): # Core
+            # Initialize
+            minsmaxs, att_arr = [], []
+            # Offsets
             for att in module.attachment_points.items():
                 transf_off = rotatevectors(att[1].offset, up, att[1].orientation)
                 att_arr.append(transf_off)
             att_arr = np.array(att_arr)
-            # Min and max values of the attachment points
+            # Min and max values of the attachment point offsets
             minsmaxs.append(att_arr.min(axis = 0))
             minsmaxs.append(att_arr.max(axis = 0))
-
-            # # Fill core values
-            # for att in module.attachment_points.items():
-            #     forward4face = rotatevectors(forward, up, att[1].orientation)
-            #     self._add(position + forward4face, module)
-
-        # Rotate forward
-        forwardrot = rotatevectors(forward, up, module.attachment_points[0].orientation)
-
-        # Go on
+        
+        # Loop through the attachment points
         for child_index, attachment_point in module.attachment_points.items():
             # Get child
             child = module.children.get(child_index)
+            # Rotate Forward
+            forwardrot = rotatevectors(forward, up, attachment_point.orientation)
+
+            # Get correction for core position (3 x 3 x 3 grid)
             if position == Vector3([0, 0, 0]):
                 # Get relative location of slot within face
                 middle = np.mean(minsmaxs, axis = 0)
@@ -193,17 +201,12 @@ class _GridMaker(Generic[TModuleNP]):
             else: 
                 rellocslot = Vector3([0, 0, 0])
             
+            # Go recursively through the children
             if child is not None:
                 assert np.isclose(child.rotation % (math.pi / 2.0), 0.0)
-                # rotation = (
-                #     orientation
-                #     * attachment_point.orientation
-                #     * Quaternion.from_eulers([child.rotation, 0, 0])
-                # )
                 forward_new = rotatevectors(forward, up, attachment_point.orientation)
                 position_new = position + forward_new + rellocslot
                 up_new = rotatevectors(up, forward_new, Quaternion.from_eulers([child.rotation, 0, 0]))
-                
                 self._make_grid_recur(child, position_new, forward_new, up_new)
 
                 

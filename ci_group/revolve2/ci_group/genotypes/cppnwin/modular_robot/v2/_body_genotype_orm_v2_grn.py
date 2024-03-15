@@ -123,7 +123,7 @@ class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
 
         return BodyGenotypeOrmV2GRN(body = new_genotype)
     
-    def develop_body(self: object, max_parts: int) -> BodyV2:
+    def develop_body(self: object, max_parts: int, mode_core_mult: bool) -> BodyV2:
         """
         Goal:
             Develop the genotype into a modular robot.
@@ -131,7 +131,7 @@ class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
         Output:
             The created robot.
         """
-        return DevelopGRN(max_parts, self.body).develop()
+        return DevelopGRN(max_parts, mode_core_mult, self.body).develop()
 
 
 

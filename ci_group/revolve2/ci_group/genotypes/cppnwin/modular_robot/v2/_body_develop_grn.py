@@ -1,6 +1,7 @@
 from copy import deepcopy
 from dataclasses import dataclass
 import math
+import matplotlib.pyplot as plt
 import numpy as np
 from revolve2.modular_robot.body import Module
 from revolve2.modular_robot.body.v2 import ActiveHingeV2, BodyV2, BrickV2, CoreV2
@@ -38,10 +39,22 @@ class DevelopGRN():
     ----------------------------------------------------------------------	
     """
 
-    def __init__(self, max_modules, genotype):
+    def __init__(self, max_modules, mode_core_mult, genotype):
         # Initialize
         self.max_modules = max_modules # Maximum number of modules
         self.genotype = genotype # Genotype
+        self.mode_core_mult = mode_core_mult # Mode core mult --> grid 3 x 3
+
+        # Grid
+        if not self.mode_core_mult:
+            self.grid = np.zeros(shape=(max_modules * 2 + 1, max_modules * 2 + 1), dtype=np.uint8)
+            self.grid[max_modules + 1, max_modules + 1] = 1
+            self.grid_origin = (max_modules + 1, max_modules + 1)
+        else:
+            self.grid = np.zeros(shape=(max_modules * 2 + 3, max_modules * 2 + 3), dtype=np.uint8)
+            self.grid[max_modules + 1:max_modules + 4, max_modules + 1:max_modules + 4] = 1
+            self.grid_origin = (max_modules + 2, max_modules + 2)
+
 
         # Internal variables
         self.phenotype_body = None # Phenotype body
@@ -81,6 +94,20 @@ class DevelopGRN():
             Develops the body of the robot."""
         # Initialize
         self = self.develop_body()
+
+        # # ---- Plot
+        # # Create a custom colormap with 4 colors
+        # cmap = plt.cm.colors.ListedColormap(['grey', 'red', 'black', 'white', 'blue'])
+
+        # # Create a normalized color map
+        # norm = plt.cm.colors.Normalize(vmin=0, vmax=4)
+
+        # # Create an array of colors based on the values
+        # plt.imshow(self.grid, cmap = cmap, norm = norm)
+        # plt.xticks(np.arange(0, self.grid.shape[0], 1))
+        # plt.yticks(np.arange(0, self.grid.shape[1], 1))
+        # plt.grid(True, which='both')
+        # plt.show()
 
         return self.phenotype_body
 
@@ -240,6 +267,9 @@ class DevelopGRN():
         # Set variables
         self.phenotype_body = BodyV2() # Here you need to go to children--> idx --> children
         self.queried_substrate[(0, 0)] = self.phenotype_body.core
+        if self.mode_core_mult:
+            for coordcore in [(-1, -1), (-1 , 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:
+                self.queried_substrate[coordcore] = self.phenotype_body.core
 
         # Create new module
         core_module = ModuleGRN(self.phenotype_body.core, self.quantity_modules, 
@@ -451,6 +481,15 @@ class DevelopGRN():
                     cell.developed_module.children[slot4coordinates] = module2add
                     self.new_cell(cell, module2add, slot4coordinates)
 
+                    # Add to grid
+                    if type(module2add.module) == ActiveHingeV2:
+                        self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 3
+                    elif type(module2add.module) == BrickV2:
+                        self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 4
+                    elif type(module2add.module) == CoreV2:
+                        self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 1
+
+
     def decay(self, tf, cell):
         """Goal:
             Decays the amount of a transcription factor in a cell."""
@@ -509,6 +548,7 @@ class DevelopGRN():
                        1: CoreV2.LEFT,
                        2: CoreV2.BACK,
                        3: CoreV2.RIGHT}
+        
 
         # Get direction
         direction = dic[parent.turtle_direction] + dic[slot]
@@ -529,6 +569,17 @@ class DevelopGRN():
         if turtle_direction == CoreV2.BACK:
             coordinates = (parent.substrate_coordinates[0],
                            parent.substrate_coordinates[1] - 1)
+        
+        # Apply correction for 3 x 3 grid
+        if self.mode_core_mult and (type(parent.module) == CoreV2):
+            if turtle_direction == CoreV2.LEFT:
+                coordinates = (coordinates[0] - 1, coordinates[1])
+            elif turtle_direction == CoreV2.RIGHT:
+                coordinates = (coordinates[0] + 1, coordinates[1])
+            elif turtle_direction == CoreV2.FRONT:
+                coordinates = (coordinates[0], coordinates[1] + 1)
+            elif turtle_direction == CoreV2.BACK:
+                coordinates = (coordinates[0], coordinates[1] - 1)
 
         return coordinates, turtle_direction
 

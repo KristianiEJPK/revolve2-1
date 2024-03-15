@@ -2,6 +2,7 @@
 import config
 from revolve2.ci_group import fitness_functions, terrains
 from revolve2.ci_group.morphological_measures import MorphologicalMeasures
+from revolve2.ci_group.behavioral_measures import BehavioralMeasures
 from revolve2.simulation.simulator import BatchParameters
 from revolve2.modular_robot import ModularRobot
 from revolve2.modular_robot_simulation import (
@@ -53,6 +54,8 @@ class Evaluator:
         # ---- Set the terrain.
         if terrain == "flat":
             self._terrain = terrains.flat()
+        elif terrain == "tilted":
+            self._terrain = terrains.tilted_flat(z = 0.1)
         else:
             raise ValueError(f"Unknown terrain: {terrain}")
         
@@ -100,64 +103,38 @@ class Evaluator:
 
 
         # ---- Get Morphological Measures
-        for robot in robots:
-            morphological_measures = MorphologicalMeasures(robot.body, config.MAX_PARTS)
-            print("Size: ", morphological_measures.size)
-            print("Proportion: ", morphological_measures.proportion_2d)
-            print("Limbs: ", morphological_measures.limbs)
-
-            maxrel_length, meanrel_length, stdrel_length = morphological_measures.length_of_limbs
-            print("Length of Limbs (maxrel): ", maxrel_length)
-            print("Length of Limbs (meanrel): ", meanrel_length)
-            print("Length of Limbs (stdrel): ", stdrel_length)
-
-            print("Joints: ", morphological_measures.joints)
-            print("Joint-Brick Ratio: ", morphological_measures.joint_brick_ratio)
-            
-
-            print("Symmetry: ", morphological_measures.symmetry)
-            print("Coverage: ", morphological_measures.coverage)
-            print("Branching: ", morphological_measures.branching)
-            print("Surface: ", morphological_measures.surface)
-
-            print("Number of Modules: ", morphological_measures.num_modules)
-            print("Number of Active Hinges: ", morphological_measures.num_active_hinges)
-            print("Number of Bricks: ", morphological_measures.num_bricks)
-            
-            
-            
-            
-            
-            
-            
-            
-            
-
-
+        behavioral_measures = []
+        for irobot, robot in enumerate(robots):
+            # # Reset morphological measures
+            # morphological_measures = MorphologicalMeasures(robot.body, config.MAX_PARTS)
+            # ---- Behavioral Measures
+            # States
+            behave = BehavioralMeasures(scene_states[irobot], robot).get_measures()
+            behavioral_measures.append({})
+            for variable, valuevar in vars(behave).items():
+                if variable not in ["states", "robot"]:
+                    behavioral_measures[-1][variable] = valuevar
+              
         # ---- Calculate the fitnesses.
         if self.fitness_function == "xy_displacement":
             fitnesses = [
                 fitness_functions.xy_displacement(
-                    states[0].get_modular_robot_simulation_state(robot),
-                    states[-1].get_modular_robot_simulation_state(robot),
-                )
-                for robot, states in zip(robots, scene_states)
+                    behavioral_measure["x_distance"], behavioral_measure["y_distance"])
+                for behavioral_measure in behavioral_measures
             ]
         elif self.fitness_function == "x_speed_Miras2021":
             fitnesses = [
                 fitness_functions.x_speed_Miras2021(
-                    states[0].get_modular_robot_simulation_state(robot),
-                    states[-1].get_modular_robot_simulation_state(robot), simulation_time = self.simulation_time
+                    behavioral_measure["x_distance"], simulation_time = self.simulation_time
                 )
-                for robot, states in zip(robots, scene_states)
-            ]
+                for behavioral_measure in behavioral_measures]
         elif self.fitness_function == "x_efficiency":
             fitnesses = [
                 fitness_functions.x_efficiency(
-                    states = states, robot = robot, simulation_time = self.simulation_time
+                    xmax = behavioral_measure["xmax"], eexp = behavioral_measure["energy_used"], simulation_time = self.simulation_time
                 )
-                for robot, states in zip(robots, scene_states)
+                for behavioral_measure in behavioral_measures
             ]
 
 
-        return fitnesses
+        return fitnesses, behavioral_measures

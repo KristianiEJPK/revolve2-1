@@ -58,7 +58,7 @@ class CoreV2(Core):
         super().__init__(
             rotation=rotation,
             mass=mass,
-            bounding_box=Vector3([0.15, 0.15, 0.15]),
+            bounding_box=Vector3([0.18865875, 0.18865875, 0.18865875]), # 0.15
             child_offset=0.0,
         )
 

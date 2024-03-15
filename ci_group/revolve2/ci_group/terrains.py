@@ -5,7 +5,7 @@ import math
 import numpy as np
 import numpy.typing as npt
 from noise import pnoise2
-from pyrr import Vector3
+from pyrr import Quaternion, Vector3
 
 from revolve2.modular_robot_simulation import Terrain
 from revolve2.simulation.scene import Pose
@@ -24,6 +24,23 @@ def flat(size: Vector2 = Vector2([20.0, 20.0])) -> Terrain:
         static_geometry=[
             GeometryPlane(
                 pose=Pose(),
+                mass=0.0,
+                size=size,
+            )
+        ]
+    )
+
+def tilted_flat(size: Vector2 = Vector2([20.0, 20.0]), z: float = 0) -> Terrain:
+    """
+    Create a flat plane terrain.
+
+    :param size: Size of the plane.
+    :returns: The created terrain.
+    """
+    return Terrain(
+        static_geometry=[
+            GeometryPlane(
+                pose=Pose(orientation=Quaternion.from_eulers([0, 0, math.pi / 90 * 10])),
                 mass=0.0,
                 size=size,
             )

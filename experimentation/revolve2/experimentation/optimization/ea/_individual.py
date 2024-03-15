@@ -34,9 +34,7 @@ class Individual(HasId, orm.MappedAsDataclass, Generic[TGenotype]):
     # -------------------------------------
     if TYPE_CHECKING:
         population_id: orm.Mapped[int] = orm.mapped_column(nullable=False, init=False)
-        population_index: orm.Mapped[int] = orm.mapped_column(
-            nullable=False, init=False
-        )
+        population_index: orm.Mapped[int] = orm.mapped_column(nullable=False, init=False)
         genotype_id: orm.Mapped[int] = orm.mapped_column(nullable=False, init=False)
         genotype: orm.Mapped[TGenotype] = orm.relationship()
         fitness: orm.Mapped[float] = orm.mapped_column(nullable=False)
@@ -65,6 +63,210 @@ class Individual(HasId, orm.MappedAsDataclass, Generic[TGenotype]):
         @orm.declared_attr
         def fitness(cls) -> orm.Mapped[float]:  # noqa
             return cls.__fitness_impl()
+        
+        @orm.declared_attr
+        def energy_used(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl() 
+        
+        @orm.declared_attr
+        def x_distance(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def tot_xdistance(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+        
+        @orm.declared_attr
+        def xmax(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def y_distance(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def tot_ydistance(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def min_dx(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def dx25(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def mean_dx(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def median_dx(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def dx75(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def max_dx(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def std_dx(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def min_dy(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def dy25(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def mean_dy(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def median_dy(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def dy75(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def max_dy(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def std_dy(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def energy_used_min(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def energy_used_25(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def energy_used_mean(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def energy_used_median(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def energy_used_75(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def energy_used_max(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def energy_used_std(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_motor_min(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_motor_25(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_motor_mean(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_motor_median(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_motor_75(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_motor_max(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_motor_std(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_all_min(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_all_25(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_all_mean(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_all_median(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_all_75(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_all_max(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def force_std_all_std(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def efficiency(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def efficiency_min(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def efficiency_25(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def efficiency_mean(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def efficiency_median(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def efficiency_75(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def efficiency_max(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+
+        @orm.declared_attr
+        def efficiency_std(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+        
+        
+    
+    
+    
+
+    
+
 
     __type_tgenotype: ClassVar[Type[TGenotype]]  # type: ignore[misc]
     __population_table: ClassVar[str]
@@ -86,7 +288,6 @@ class Individual(HasId, orm.MappedAsDataclass, Generic[TGenotype]):
         assert not isinstance(
             cls.__type_tgenotype, ForwardRef
         ), "TGenotype generic argument cannot be a forward reference."
-
         cls.__population_table = population_table
         assert isinstance(
             cls.__population_table, str
@@ -121,3 +322,7 @@ class Individual(HasId, orm.MappedAsDataclass, Generic[TGenotype]):
     @classmethod
     def __fitness_impl(cls) -> orm.Mapped[float]:
         return orm.mapped_column(nullable=False)
+        
+    @classmethod
+    def __behavioral_measures_impl(cls) -> orm.Mapped[float]:
+        return orm.mapped_column(nullable=False)    

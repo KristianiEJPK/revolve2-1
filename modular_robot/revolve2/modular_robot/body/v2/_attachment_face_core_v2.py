@@ -39,7 +39,7 @@ class AttachmentFaceCoreV2(AttachmentFace):
         :param horizontal_offset: The horizontal offset for module placement.
         :param vertical_offset:  The vertical offset for module placement.
         """
-        self._child_offset = Vector3([0.15 / 2.0, 0.0, 0.0])
+        self._child_offset = Vector3([0.18865875 / 2.0, 0.0, 0.0]) # 0.15
         self._check_matrix = np.zeros(shape=(3, 3), dtype=np.uint8)
 
         """

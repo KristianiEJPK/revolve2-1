@@ -108,7 +108,7 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2GRN, BrainGenotypeCpgOrm):
 
             return Genotype(body=body.body, brain=brain.brain)
 
-    def develop(self, include_bias, max_parts) -> ModularRobot:
+    def develop(self, include_bias, max_parts, mode_core_mult) -> ModularRobot:
         """
         Goal:
             Develop the genotype into a modular robot.
@@ -118,12 +118,13 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2GRN, BrainGenotypeCpgOrm):
                 brain genotype).
             include_bias: Whether to include the bias as input for CPPN.
             max_parts: The maximum number of parts for the robot.
+            mode_core_mult: Whether to use 3 x 3 core block
         -------------------------------------------------------------------------------------------
         Output:
             The created robot: ModularRobot.
         """
         # Develop body and brain
-        body = self.develop_body(max_parts)
+        body = self.develop_body(max_parts, mode_core_mult)
         brain = self.develop_brain(body = body, include_bias = include_bias)
 
         return ModularRobot(body = body, brain = brain)

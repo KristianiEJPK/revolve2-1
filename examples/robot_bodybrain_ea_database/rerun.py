@@ -30,15 +30,19 @@ def main() -> None:
 
     with Session(dbengine) as ses:
         rows = ses.execute(
-            select(Genotype, Individual.fitness)
+            select(Genotype, Individual.fitness, Individual.energy_used, Individual.efficiency,
+                   Individual.x_distance,)
             .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
-            .order_by(Individual.fitness.desc()).limit(50)
+            .order_by(Individual.fitness.desc()).limit(200)
         ).fetchall() #.one()
         #assert row is not None
         
-    for row in rows[5:]:
+    for row in rows[0:]:
         genotype = row[0]
         fitness = row[1]
+        energy_used = row[2]
+        efficiency = row[3]
+        x_distance = row[4]
 
         if os.environ["Algorithm"] == "CPPN":
             modular_robot = genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
@@ -47,17 +51,21 @@ def main() -> None:
                 mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
                 mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL)
         elif os.environ["Algorithm"] == "GRN":
-            modular_robot = genotype.develop(include_bias = config.CPPNBIAS, max_parts = config.MAX_PARTS)
+            modular_robot = genotype.develop(include_bias = config.CPPNBIAS, max_parts = config.MAX_PARTS, mode_core_mult = config.MODE_CORE_MULT)
 
         logging.info(f"Best fitness: {fitness}")
+        logging.info(f"Energy used: {energy_used}")
+        logging.info(f"Efficiency: {efficiency}")
+        logging.info(f"X distance: {x_distance}")
+
 
         # Create the evaluator.
-        evaluator = Evaluator(headless = True, num_simulators = 1, terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
+        evaluator = Evaluator(headless = False, num_simulators = 1, terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
                               simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY,
                               simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY)
 
         # Show the robot.
-        evaluator.evaluate([modular_robot])
+        fitnesses, behavioral_measures = evaluator.evaluate([modular_robot])
 
         
 
