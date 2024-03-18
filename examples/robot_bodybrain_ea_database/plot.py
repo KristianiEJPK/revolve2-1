@@ -16,64 +16,58 @@ from revolve2.experimentation.database import OpenMethod, open_database_sqlite
 from revolve2.experimentation.logging import setup_logging
 
 
-def main() -> None:
+def main(column) -> None:
     """Run the program."""
     setup_logging()
 
-    dbengine = open_database_sqlite(
-        config.DATABASE_FILE, open_method=OpenMethod.OPEN_IF_EXISTS
-    )
+    # Open database
+    dbengine = open_database_sqlite(config.DATABASE_FILE, open_method=OpenMethod.OPEN_IF_EXISTS)
 
-    df = pandas.read_sql(
-        select(
-            Experiment.id.label("experiment_id"),
-            Generation.generation_index,
-            Individual.fitness,
-        )
-        .join_from(Experiment, Generation, Experiment.id == Generation.experiment_id)
-        .join_from(Generation, Population, Generation.population_id == Population.id)
-        .join_from(Population, Individual, Population.id == Individual.population_id),
-        dbengine,
-    )
+    # Get pandas data
+    df = select_data(dbengine, column)
 
+    # Get max and mean fitness per experiment per generation
     agg_per_experiment_per_generation = (
         df.groupby(["experiment_id", "generation_index"])
-        .agg({"fitness": ["max", "mean"]})
+        .agg({column: ["max", "mean"]})
         .reset_index()
     )
+
+    # Aggregate over experiments
     agg_per_experiment_per_generation.columns = [
         "experiment_id",
         "generation_index",
-        "max_fitness",
-        "mean_fitness",
+        f"max_{column}",
+        f"mean_{column}",
     ]
 
     agg_per_generation = (
         agg_per_experiment_per_generation.groupby("generation_index")
-        .agg({"max_fitness": ["mean", "std"], "mean_fitness": ["mean", "std"]})
+        .agg({f"max_{column}": ["mean", "std"], f"mean_{column}": ["mean", "std"]})
         .reset_index()
     )
+
+    # Set columns
     agg_per_generation.columns = [
         "generation_index",
-        "max_fitness_mean",
-        "max_fitness_std",
-        "mean_fitness_mean",
-        "mean_fitness_std",
-    ]
+        f"max_{column}_mean",
+        f"max_{column}_std",
+        f"mean_{column}_mean",
+        f"mean_{column}_std", ]
 
     plt.figure()
 
     # Plot max
     plt.plot(
         agg_per_generation["generation_index"],
-        agg_per_generation["max_fitness_mean"],
-        label="Max fitness",
+        agg_per_generation[f"max_{column}_mean"],
+        label=f"Max {column}",
         color="b",
     )
     plt.fill_between(
         agg_per_generation["generation_index"],
-        agg_per_generation["max_fitness_mean"] - agg_per_generation["max_fitness_std"],
-        agg_per_generation["max_fitness_mean"] + agg_per_generation["max_fitness_std"],
+        agg_per_generation[f"max_{column}_mean"] - agg_per_generation[f"max_{column}_std"],
+        agg_per_generation[f"max_{column}_mean"] + agg_per_generation[f"max_{column}_std"],
         color="b",
         alpha=0.2,
     )
@@ -81,26 +75,48 @@ def main() -> None:
     # Plot mean
     plt.plot(
         agg_per_generation["generation_index"],
-        agg_per_generation["mean_fitness_mean"],
-        label="Mean fitness",
+        agg_per_generation[f"mean_{column}_mean"],
+        label=f"Mean {column}",
         color="r",
     )
     plt.fill_between(
         agg_per_generation["generation_index"],
-        agg_per_generation["mean_fitness_mean"]
-        - agg_per_generation["mean_fitness_std"],
-        agg_per_generation["mean_fitness_mean"]
-        + agg_per_generation["mean_fitness_std"],
+        agg_per_generation[f"mean_{column}_mean"]
+        - agg_per_generation[f"mean_{column}_std"],
+        agg_per_generation[f"mean_{column}_mean"]
+        + agg_per_generation[f"mean_{column}_std"],
         color="r",
         alpha=0.2,
     )
 
-    plt.xlabel("Generation index")
-    plt.ylabel("Fitness")
-    plt.title("Mean and max fitness across repetitions with std as shade")
+    plt.xlabel("Generation Index", fontweight = "bold", size = 16)
+    plt.ylabel(column.title(), fontweight = "bold", size = 16)
+    plt.title(f"Mean and Max '{column.title()}' across Repetitions with Std as Shade", fontweight = "bold", size = 16)
     plt.legend()
+    plt.grid()
+    plt.tight_layout()
     plt.show()
 
 
+def select_data(dbengine, column: str) -> pandas.DataFrame:
+    """Goal:
+        Select the data of the column
+    -------------------------------------------------------------
+    Input:
+        dbengine: ?
+        column: The column that needs to be selected
+    --------------------------------------------------------------
+    Output:
+        df: pd.Dataframe"""
+    df = pandas.read_sql(
+        select(Experiment.id.label("experiment_id"), Generation.generation_index, getattr(Individual, column),)
+        .join_from(Experiment, Generation, Experiment.id == Generation.experiment_id)
+        .join_from(Generation, Population, Generation.population_id == Population.id)
+        .join_from(Population, Individual, Population.id == Individual.population_id),
+        dbengine,
+    )
+
+    return df
+
 if __name__ == "__main__":
-    main()
+    main(column = "fitness")

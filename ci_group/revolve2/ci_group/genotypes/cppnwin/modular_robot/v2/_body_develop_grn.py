@@ -51,7 +51,7 @@ class DevelopGRN():
             self.grid[max_modules + 1, max_modules + 1] = 1
             self.grid_origin = (max_modules + 1, max_modules + 1)
         else:
-            self.grid = np.zeros(shape=(max_modules * 2 + 3, max_modules * 2 + 3), dtype=np.uint8)
+            self.grid = np.zeros(shape=(max_modules * 2 + 4, max_modules * 2 + 4), dtype=np.uint8)
             self.grid[max_modules + 1:max_modules + 4, max_modules + 1:max_modules + 4] = 1
             self.grid_origin = (max_modules + 2, max_modules + 2)
 

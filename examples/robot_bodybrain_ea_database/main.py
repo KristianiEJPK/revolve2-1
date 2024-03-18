@@ -34,7 +34,7 @@ def select_parents(
     population: Population,
     offspring_size: int,
     Nparents: int,
-    parent_tournament_size: int,
+    parent_tournament_size: int, random: bool = False
 ) -> npt.NDArray[np.float_]:
     """
     Goal:
@@ -46,6 +46,7 @@ def select_parents(
         offspring_size: The number of parent pairs to select.
         Nparents: The number of parents to select.
         parent_tournament_size: The size of the tournament to select parents.
+        random: Whether to select parents without selection pressure.
     -------------------------------------------------------------------------------------------
     Output:
         Pairs of indices of selected parents. offspring_size x 2 ints.
@@ -56,7 +57,7 @@ def select_parents(
                 Nparents,
                 [individual.genotype for individual in population.individuals],
                 [individual.fitness for individual in population.individuals],
-                lambda _, fitnesses: selection.tournament(rng, fitnesses, k = parent_tournament_size),
+                lambda _, fitnesses: selection.tournament(rng, fitnesses, k = parent_tournament_size, random = random),
             )
             for _ in range(offspring_size)
         ],
@@ -68,6 +69,7 @@ def select_survivors(
     original_population: Population,
     offspring_population: Population,
     survivor_tournament_size: int,
+    random: bool = False
 ) -> Population:
     """
     Goal:
@@ -92,7 +94,7 @@ def select_survivors(
             n,
             genotypes,
             fitnesses,
-            lambda _, fitnesses: selection.tournament(rng, fitnesses, k = survivor_tournament_size),
+            lambda _, fitnesses: selection.tournament(rng, fitnesses, k = survivor_tournament_size, random = random),
         ),
     )
 
@@ -131,7 +133,9 @@ def select_survivors(
                 efficiency = original_population.individuals[i].efficiency, efficiency_min = original_population.individuals[i].efficiency_min,
                 efficiency_25 = original_population.individuals[i].efficiency_25, efficiency_mean = original_population.individuals[i].efficiency_mean,
                 efficiency_median = original_population.individuals[i].efficiency_median, efficiency_75 = original_population.individuals[i].efficiency_75,
-                efficiency_max = original_population.individuals[i].efficiency_max, efficiency_std = original_population.individuals[i].efficiency_std
+                efficiency_max = original_population.individuals[i].efficiency_max, efficiency_std = original_population.individuals[i].efficiency_std,
+                
+                balance = original_population.individuals[i].balance
             )
             for i in original_survivors
         ]
@@ -169,8 +173,9 @@ def select_survivors(
                 efficiency = offspring_population.individuals[i].efficiency, efficiency_min = offspring_population.individuals[i].efficiency_min,
                 efficiency_25 = offspring_population.individuals[i].efficiency_25, efficiency_mean = offspring_population.individuals[i].efficiency_mean,
                 efficiency_median = offspring_population.individuals[i].efficiency_median, efficiency_75 = offspring_population.individuals[i].efficiency_75,
-                efficiency_max = offspring_population.individuals[i].efficiency_max, efficiency_std = offspring_population.individuals[i].efficiency_std
+                efficiency_max = offspring_population.individuals[i].efficiency_max, efficiency_std = offspring_population.individuals[i].efficiency_std,
 
+                balance = offspring_population.individuals[i].balance
             )
             for i in offspring_survivors
         ]
@@ -324,13 +329,19 @@ def run_experiment(dbengine: Engine) -> None:
 
     # Start the actual optimization process.
     logging.info("Start optimization process.")
+    # Initialize random search boolean to True
+    random_search = True
     while generation.generation_index < config.NUM_GENERATIONS:
         logging.info(
             f"Generation {generation.generation_index + 1} / {config.NUM_GENERATIONS}."
         )
 
+        # Check if random search should be performed
+        if generation.generation_index == config.NUM_RANDOM_SEARCH:
+            random_search = False
+
         # Create offspring.
-        parents = select_parents(rng, population, config.OFFSPRING_SIZE, config.NPARENTS, config.PARENT_TOURNAMENT_SIZE)
+        parents = select_parents(rng, population, config.OFFSPRING_SIZE, config.NPARENTS, config.PARENT_TOURNAMENT_SIZE, random = random_search)
         if os.environ["ALGORITHM"] == "CPPN":
             offspring_genotypes = [
                 Genotype.crossover(
@@ -410,7 +421,7 @@ def run_experiment(dbengine: Engine) -> None:
         population, idx4selection = select_survivors(
             rng,
             population,
-            offspring_population, config.SURVIVOR_TOURNAMENT_SIZE
+            offspring_population, config.SURVIVOR_TOURNAMENT_SIZE, random = random_search
         )
 
         # Make it all into a generation and save it to the database.

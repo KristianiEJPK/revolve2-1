@@ -93,7 +93,7 @@ def develop(
     # Initialize grid
     if mode_core_mult:
         # 3 x 3 x 3 block for core instead of 1 x 1 x 1
-        grid = np.zeros(shape=(max_parts * 2 + 3, max_parts * 2 + 3, max_parts * 2 + 3), dtype=np.uint8)
+        grid = np.zeros(shape=(max_parts * 2 + 4, max_parts * 2 + 4, max_parts * 2 + 4), dtype=np.uint8)
         grid[max_parts + 1:max_parts + 4, max_parts + 1:max_parts + 4, max_parts + 1:max_parts + 4] = 1
         assert np.sum(grid) == (3**3), f"Error: The core is not placed correctly in the grid. Sum: {np.sum(grid)}."
     else:

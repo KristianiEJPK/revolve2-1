@@ -16,7 +16,7 @@ TModule = TypeVar("TModule", bound=np.generic)
 
 class MorphologicalMeasures(Generic[TModule]):
 
-    def __init__(self, body: Body, max_modules: int) -> None:
+    def __init__(self, body: Body, brain: object, max_modules: int) -> None:
         # Initialize
         self.max_modules = max_modules
         self.core = body.core

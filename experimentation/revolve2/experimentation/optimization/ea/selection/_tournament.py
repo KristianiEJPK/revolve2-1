@@ -5,7 +5,7 @@ import numpy as np
 Fitness = TypeVar("Fitness")
 
 
-def tournament(rng: np.random.Generator, fitnesses: list[Fitness], k: int) -> int:
+def tournament(rng: np.random.Generator, fitnesses: list[Fitness], k: int, random: bool) -> int:
     """
     Goal:
         Perform tournament selection and return the index of the best individual.
@@ -14,6 +14,7 @@ def tournament(rng: np.random.Generator, fitnesses: list[Fitness], k: int) -> in
         rng: Random number generator.
         fitnesses: List of finesses of individuals that joint the tournamente.
         k: Amount of individuals to participate in tournament.
+        random: Whether to select parents without selection pressure.
     -------------------------------------------------------------------------------------------
     Output:
         The index of te individual that won the tournament.
@@ -23,4 +24,9 @@ def tournament(rng: np.random.Generator, fitnesses: list[Fitness], k: int) -> in
 
     # Select random participants
     participant_indices = rng.choice(range(len(fitnesses)), size=k)
-    return max(participant_indices, key=lambda i: fitnesses[i])  # type: ignore[no-any-return]
+
+    if not random:
+        # Return the index of the best participant
+        return max(participant_indices, key=lambda i: fitnesses[i])  # type: ignore[no-any-return]
+    elif random:
+        return np.random.choice(participant_indices)

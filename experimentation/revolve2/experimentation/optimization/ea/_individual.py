@@ -260,6 +260,10 @@ class Individual(HasId, orm.MappedAsDataclass, Generic[TGenotype]):
         def efficiency_std(cls) -> orm.Mapped[float]:
             return cls.__behavioral_measures_impl()
         
+        @orm.declared_attr
+        def balance(cls) -> orm.Mapped[float]:
+            return cls.__behavioral_measures_impl()
+        
         
     
     

@@ -1,5 +1,28 @@
-
+import math
 import numpy as np
+
+
+def to_euler(quat):
+    """
+    Adapted from 
+    https://github.com/the-guild-of-calamitous-intent/squaternion/blob/master/python/squaternion/squaternion.py
+    """
+    ysqr = quat[2] * quat[2]
+
+    t0 = +2.0 * (quat[0] * quat[1] + quat[2] * quat[3])
+    t1 = +1.0 - 2.0 * (quat[1] * quat[1] + ysqr)
+    X = math.atan2(t0, t1)
+
+    t2 = +2.0 * (quat[0] * quat[2] - quat[3] * quat[1])
+    t2 = +1.0 if t2 > +1.0 else t2
+    t2 = -1.0 if t2 < -1.0 else t2
+    Y = math.asin(t2)
+
+    t3 = +2.0 * (quat[0] * quat[3] + quat[1] * quat[2])
+    t4 = +1.0 - 2.0 * (ysqr + quat[3] * quat[3])
+    Z = math.atan2(t3, t4)
+
+    return (X, Y, Z,)
 
 class BehavioralMeasures():
     
@@ -19,6 +42,8 @@ class BehavioralMeasures():
         -------------------------------------------------------------------------------------------"""
         # ---- Initialize
         self.energy_used = 0
+        self.roll = 0
+        self.pitch = 0
         start_state, end_state = [], []
         history = {"force": [], "energy": [], "efficiency": [], "dx": [], "dy": []}
 
@@ -47,6 +72,12 @@ class BehavioralMeasures():
                 history["force"].append(forces)
             history["energy"].append(energy_used)
             history["efficiency"].append(history["dx"][-1] / history["energy"][-1] if history["energy"][-1] else 0)
+
+            # Save rotation
+            euler = to_euler(state_info._multi_body_system.pose.orientation)
+            eulers = [euler[0], euler[1], euler[2]]
+            self.roll += abs(eulers[0]) * 180 / math.pi
+            self.pitch += abs(eulers[1]) * 180 / math.pi
 
         # Overall Measures for Distance    
         self.x_distance = end_state[0] - start_state[0]
@@ -147,6 +178,10 @@ class BehavioralMeasures():
             self.efficiency_75 = 0
             self.efficiency_max = 0
             self.efficiency_std = 0
+        
+        # Balance
+        self.balance = (self.roll + self.pitch) / (len(self.states) * 180 * 2)
+        self.balance = 1 - self.balance
     
         return self
 

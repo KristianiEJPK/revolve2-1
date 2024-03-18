@@ -105,8 +105,9 @@ class Evaluator:
         # ---- Get Morphological Measures
         behavioral_measures = []
         for irobot, robot in enumerate(robots):
-            # # Reset morphological measures
-            # morphological_measures = MorphologicalMeasures(robot.body, config.MAX_PARTS)
+            # ---- Morphological measures
+            #morphological_measures = MorphologicalMeasures(robot.body, robot.brain, config.MAX_PARTS)
+
             # ---- Behavioral Measures
             # States
             behave = BehavioralMeasures(scene_states[irobot], robot).get_measures()
