@@ -21,9 +21,6 @@ class MorphologicalMeasures(Generic[TModule]):
         self.max_modules = max_modules
         self.core = body.core
 
-        # Check if 2D
-        assert self.__calculate_is_2d_recur(body.core), "Body is not 2D."
-
         # Get number of modules
         self.bricks = body.find_modules_of_type(Brick)
         self.active_hinges = body.find_modules_of_type(ActiveHinge)
@@ -34,7 +31,10 @@ class MorphologicalMeasures(Generic[TModule]):
         self.single_neighbour_active_hinges = len(self.__calculate_single_neighbour(ActiveHinge))
         
         # Other measures
-        self.grid, self.core_grid_position = body.to_grid()
+        self.grid, self.core_grid_position, self.id_string = body.to_grid(ActiveHingeV2, BrickV2)
+
+        # Check if 2D
+        assert self.__calculate_is_2d_recur(self.grid), "Body is not 2D."
 
     @property
     def size(self) -> float:
@@ -126,10 +126,10 @@ class MorphologicalMeasures(Generic[TModule]):
         if max_potential_single_neighbour_modules == 0:
             return 0.0
         else:
-            return ((self.single_neighbour(ActiveHinge) + 
-                 self.single_neighbour(Brick)) / max_potential_single_neighbour_modules)
+            return ((self.single_neighbour_bricks + 
+                 self.single_neighbour_active_hinges) / max_potential_single_neighbour_modules)
 
-
+    @property
     def double_neigbour_brick_and_active_hinge_ratio(self) -> float:
         """Goal:
             Ratio for double attached modules from Miras (2018).
@@ -681,22 +681,17 @@ class MorphologicalMeasures(Generic[TModule]):
         return self.grid.shape[2]
     
     @classmethod
-    def __calculate_is_2d_recur(cls, module: Module) -> bool:
+    def __calculate_is_2d_recur(cls, grid) -> bool:
         """Goal:
             Calculate if the robot is two dimensional.
         -------------------------------------------------------
         Input:
-            module: The module.
+            grid: The grid of the robot.
         -------------------------------------------------------
         Output:
             If the robot is two dimensional.
         """
-        # Zero rotation, but hinges can be rotated. Brick after rotated hinge is also rotated.
-        bool = np.isclose(module.rotation, 0.0) or (
-                np.isclose(module.rotation, 0.5 * np.pi) and (type(module) == ActiveHingeV2)) or (
-                    np.isclose(module.rotation, 0.5 * np.pi) and (type(module) == BrickV2) and 
-                    ((type(module.parent) != None) and (module.parent.rotation == 0.5 * np.pi)))
-        return all([bool] + [cls.__calculate_is_2d_recur(child) for child in module.children.values()])
+        return (grid.shape[2] == 3) and ((grid[:, :, 2] != None).sum() == 8) and ((grid[:, :, 0] != None).sum() == 8)
 
     def create_plot(self, grid, z = 0, movable = None):
         """Goal:
@@ -734,5 +729,6 @@ class MorphologicalMeasures(Generic[TModule]):
 
         if isinstance(movable, np.ndarray):
             plt.scatter(movable[:, 1], movable[:, 0], c = 'black', s = 100, marker = 'o')
-        plt.show()
+        
+        return plt.show()
     

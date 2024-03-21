@@ -42,8 +42,7 @@ class BehavioralMeasures():
         -------------------------------------------------------------------------------------------"""
         # ---- Initialize
         self.energy_used = 0
-        self.roll = 0
-        self.pitch = 0
+        self.roll, self.pitch = 0, 0
         start_state, end_state = [], []
         history = {"force": [], "energy": [], "efficiency": [], "dx": [], "dy": []}
 
@@ -59,25 +58,29 @@ class BehavioralMeasures():
             # Get positional information
             if istate == 0:
                 start_state = [state_info.get_pose().position.x, state_info.get_pose().position.y]
+                prev_x, prev_y = state_info.get_pose().position.x, state_info.get_pose().position.y
             elif istate == len(self.states) - 1:
                 end_state = [state_info.get_pose().position.x, state_info.get_pose().position.y]
             
             # Save delta distances
-            history["dx"].append(state_info.get_pose().position.x - start_state[0])
-            history["dy"].append(state_info.get_pose().position.y - start_state[1])
+            history["dx"].append(state_info.get_pose().position.x - prev_x)
+            history["dy"].append(state_info.get_pose().position.y - prev_y)
 
             # Save forces, energy and efficiency for step
             if forces.size == 0: pass
             else:
                 history["force"].append(forces)
             history["energy"].append(energy_used)
-            history["efficiency"].append(history["dx"][-1] / history["energy"][-1] if history["energy"][-1] else 0)
+            history["efficiency"].append(history["dx"][-1] / history["energy"][-1] if history["energy"][-1] != 0 else 0)
 
             # Save rotation
             euler = to_euler(state_info._multi_body_system.pose.orientation)
             eulers = [euler[0], euler[1], euler[2]]
             self.roll += abs(eulers[0]) * 180 / math.pi
             self.pitch += abs(eulers[1]) * 180 / math.pi
+
+            # Update previous position
+            prev_x, prev_y = state_info.get_pose().position.x, state_info.get_pose().position.y
 
         # Overall Measures for Distance    
         self.x_distance = end_state[0] - start_state[0]

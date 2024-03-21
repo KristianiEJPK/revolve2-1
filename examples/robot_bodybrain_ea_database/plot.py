@@ -120,3 +120,11 @@ def select_data(dbengine, column: str) -> pandas.DataFrame:
 
 if __name__ == "__main__":
     main(column = "fitness")
+
+
+# Planning
+# Alle variabelen even doorlopen met plots en kijken of het is zoals gewenst
+# 2D check opnieuw maken
+# Paar plaatjes controleren
+# Probleem met balance
+# Crossover voor brein indien GRN?

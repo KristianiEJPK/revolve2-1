@@ -33,11 +33,11 @@ def main() -> None:
             select(Genotype, Individual.fitness, Individual.energy_used, Individual.efficiency,
                    Individual.x_distance,)
             .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
-            .order_by(Individual.fitness.desc()).limit(200)
+            .order_by(Individual.fitness.desc()).limit(1000)
         ).fetchall() #.one()
         #assert row is not None
         
-    for row in rows[0:]:
+    for row in rows[999:]:
         genotype = row[0]
         fitness = row[1]
         energy_used = row[2]
@@ -60,7 +60,7 @@ def main() -> None:
 
 
         # Create the evaluator.
-        evaluator = Evaluator(headless = True, num_simulators = 1, terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
+        evaluator = Evaluator(headless = False, num_simulators = 1, terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
                               simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY,
                               simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY)
 

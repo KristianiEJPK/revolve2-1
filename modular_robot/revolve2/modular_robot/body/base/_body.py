@@ -88,7 +88,7 @@ class Body:
         """
         return self.__find_recur(self._core, module_type)
 
-    def to_grid(self) -> tuple[NDArray[TModuleNP], Vector3[np.int_]]:
+    def to_grid(self, ActiveHingeV2, BrickV2) -> tuple[NDArray[TModuleNP], Vector3[np.int_]]:
         """
         Convert the tree structure to a grid.
 
@@ -99,7 +99,7 @@ class Body:
 
         :returns: The created grid with cells set to either a Module or None and a position vector of the core. The position Vector3 is dtype: int.
         """
-        return _GridMaker().make_grid(self)
+        return _GridMaker(ActiveHingeV2, BrickV2).make_grid(self)
 
     @property
     def core(self) -> Core:
@@ -113,11 +113,13 @@ class Body:
 
 class _GridMaker(Generic[TModuleNP]):
 
-    def __init__(self) -> None:
+    def __init__(self, ActiveHingeV2, BrickV2) -> None:
         self._x: list[int] = []
         self._y: list[int] = []
         self._z: list[int] = []
         self._modules: list[Module] = []
+        self.ActiveHingeV2 = ActiveHingeV2
+        self.BrickV2 = BrickV2
 
     def make_grid(self, body: Body) -> tuple[NDArray[TModuleNP], Vector3[np.int_]]:
         """Goal:
@@ -129,6 +131,11 @@ class _GridMaker(Generic[TModuleNP]):
         Output:
             The created grid with cells set to either a Module or None and a position vector of the core. The position Vector3 is dtype: int.
         """
+        # Initialize max parts required for string variable and a string as identifier for the body
+        self.max4grid = len(body.find_modules_of_type(self.ActiveHingeV2)) + len(body.find_modules_of_type(self.BrickV2)) + 1
+        self.coreposition4altgrid = Vector3([self.max4grid + 2, self.max4grid + 2, 0], dtype = np.int_)
+        self.id_string = {} 
+
         # Loop through the attachment points
         for child_index, _ in body._core.attachment_points.items():
             # Get child
@@ -140,8 +147,21 @@ class _GridMaker(Generic[TModuleNP]):
                 forward = Vector3([-1, 0, 0])
             # Recursively loop through orientation points
             self._make_grid_recur(child, Vector3([0, 0, 0]), 
-                                forward, Vector3([0, 0, 1]), )
-
+                                forward, Vector3([0, 0, 1]), self.coreposition4altgrid)
+        
+        # ---- Adapt id_string
+        id_string = dict(sorted(self.id_string.items()))
+        new_id_string = f"{self.max4grid}|"
+        for key, value in id_string.items():
+            new_id_string += f"{key}-{value[0]}"
+            if len(value) > 1:
+                for att, rot in dict(sorted(value[1].items())).items():
+                    new_id_string += att + rot
+            new_id_string += "-"
+        
+        self.id_string = deepcopy(new_id_string)
+        
+        # ---- ?
         minx, maxx = min(self._x), max(self._x)
         miny, maxy = min(self._y), max(self._y)
         minz, maxz = min(self._z), max(self._z)
@@ -155,10 +175,10 @@ class _GridMaker(Generic[TModuleNP]):
         for x, y, z, module in zip(self._x, self._y, self._z, self._modules):
             grid[x - minx, y - miny, z - minz] = module
 
-        return grid, Vector3([-minx, -miny, -minz])
+        return grid, Vector3([-minx, -miny, -minz]), self.id_string
 
     def _make_grid_recur(
-        self, module: Module, position: Vector3, forward: Vector3, up: Vector3
+        self, module: Module, position: Vector3, forward: Vector3, up: Vector3, position_alt: Vector3
     ) -> None:
         
         # Add the module to the grid
@@ -177,6 +197,7 @@ class _GridMaker(Generic[TModuleNP]):
             minsmaxs.append(att_arr.min(axis = 0))
             minsmaxs.append(att_arr.max(axis = 0))
         
+
         # Loop through the attachment points
         for child_index, attachment_point in module.attachment_points.items():
             # Get child
@@ -206,9 +227,33 @@ class _GridMaker(Generic[TModuleNP]):
                 assert np.isclose(child.rotation % (math.pi / 2.0), 0.0)
                 forward_new = rotatevectors(forward, up, attachment_point.orientation)
                 position_new = position + forward_new + rellocslot
+                position_alt_new = position_alt + forward_new + rellocslot
                 up_new = rotatevectors(up, forward_new, Quaternion.from_eulers([child.rotation, 0, 0]))
-                self._make_grid_recur(child, position_new, forward_new, up_new)
 
+                # ---- Store info in id_string
+                # Get required information
+                child_type = type(child)
+                child_rotation_index = int(child.rotation / (math.pi / 2.0))
+                grid_shape = self.max4grid * 2 + 4
+                # Set parent
+                parent_position = position_alt + rellocslot
+                linear_index_parent = str(int(parent_position[0] * grid_shape + parent_position[1]))
+
+                if linear_index_parent in self.id_string.keys():
+                    if len(self.id_string[linear_index_parent]) == 2:
+                        self.id_string[linear_index_parent][1][str(child_index)] = str(child_rotation_index)
+                    else:
+                        self.id_string[linear_index_parent].append({str(child_index): str(child_rotation_index)})
+                else:
+                    self.id_string[linear_index_parent] = ["C", {str(child_index): str(child_rotation_index)}]
+                
+                # Set child
+                linear_index_child = str(int(position_alt_new[0] * grid_shape + position_alt_new[1]))
+                child_char = "A" if child_type == self.ActiveHingeV2 else "B"
+                self.id_string[linear_index_child] = [child_char]
+
+                # ---- Get childs recursively
+                self._make_grid_recur(child, position_new, forward_new, up_new, position_alt_new)
                 
 
     def _add(self, position: Vector3, module: Module) -> None:

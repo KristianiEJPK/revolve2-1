@@ -308,7 +308,9 @@ def run_experiment(dbengine: Engine) -> None:
                 efficiency = behave_measure["efficiency"], efficiency_min = behave_measure["efficiency_min"],
                 efficiency_25 = behave_measure["efficiency_25"], efficiency_mean = behave_measure["efficiency_mean"],
                 efficiency_median = behave_measure["efficiency_median"], efficiency_75 = behave_measure["efficiency_75"],
-                efficiency_max = behave_measure["efficiency_max"], efficiency_std = behave_measure["efficiency_std"]
+                efficiency_max = behave_measure["efficiency_max"], efficiency_std = behave_measure["efficiency_std"],
+                
+                balance = behave_measure["balance"]
                 )
             for genotype, fitness, behave_measure in zip(
                 initial_genotypes, initial_fitnesses, behavioral_measures, strict=True
@@ -412,7 +414,9 @@ def run_experiment(dbengine: Engine) -> None:
                     efficiency = behave_measure["efficiency"], efficiency_min = behave_measure["efficiency_min"],
                     efficiency_25 = behave_measure["efficiency_25"], efficiency_mean = behave_measure["efficiency_mean"],
                     efficiency_median = behave_measure["efficiency_median"], efficiency_75 = behave_measure["efficiency_75"],
-                    efficiency_max = behave_measure["efficiency_max"], efficiency_std = behave_measure["efficiency_std"])
+                    efficiency_max = behave_measure["efficiency_max"], efficiency_std = behave_measure["efficiency_std"],
+                    
+                    balance = behave_measure["balance"])
                 for genotype, fitness, behave_measure in zip(offspring_genotypes, offspring_fitnesses, offspring_behavioral_measures)
             ]
         )
