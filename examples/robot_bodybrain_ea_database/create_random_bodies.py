@@ -16,12 +16,16 @@ from revolve2.modular_robot.body.v2 import ActiveHingeV2, BodyV2, BrickV2
 
 def rotate(a: Vector3, b: Vector3, rotation: Quaternion) -> Vector3:
     """
-    Rotates vector a a given angle around b.
-
-    :param a: Vector a.
-    :param b: Vector b.
-    :param rotation: The quaternion for rotation.
-    :returns: A copy of a, rotated.
+    Goal:
+        Rotates vector a a given angle around b.
+    ----------------------------------------------------------------------
+    Input:
+        a: Vector a.
+        b: Vector b.
+        rotation: The quaternion for rotation.
+    ----------------------------------------------------------------------
+    Output:
+        A copy of a, rotated.
     """
     cos_angle: int = int(round(np.cos(rotation.angle)))
     sin_angle: int = int(round(np.sin(rotation.angle)))
@@ -34,10 +38,14 @@ def rotate(a: Vector3, b: Vector3, rotation: Quaternion) -> Vector3:
 
 def vec3_int(vector: Vector3) -> Vector3[np.int_]:
     """
-    Cast a Vector3 object to an integer only Vector3.
-
-    :param vector: The vector.
-    :return: The integer vector.
+    Goal:
+        Cast a Vector3 object to an integer only Vector3.
+    ----------------------------------------------------------------------
+    Input:
+        vector: The vector.
+    ----------------------------------------------------------------------
+    Output:
+        The integer vector.
     """
     x, y, z = map(lambda v: int(round(v)), vector)
     return Vector3([x, y, z], dtype=np.int64)
