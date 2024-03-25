@@ -11,6 +11,7 @@ from generation import Generation
 from individual import Individual
 from population import Population
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from revolve2.experimentation.database import OpenMethod, open_database_sqlite
 from revolve2.experimentation.logging import setup_logging
@@ -91,11 +92,12 @@ def main(column) -> None:
 
     plt.xlabel("Generation Index", fontweight = "bold", size = 16)
     plt.ylabel(column.title(), fontweight = "bold", size = 16)
-    plt.title(f"Mean and Max '{column.title()}' across Repetitions with Std as Shade", fontweight = "bold", size = 16)
+    plt.title(f"{column.title()}", fontweight = "bold", size = 16)
     plt.legend()
     plt.grid()
     plt.tight_layout()
-    plt.show()
+    plt.savefig(f"plots/{column}.png")
+    #plt.show()
 
 
 def select_data(dbengine, column: str) -> pandas.DataFrame:
@@ -119,7 +121,36 @@ def select_data(dbengine, column: str) -> pandas.DataFrame:
     return df
 
 if __name__ == "__main__":
-    main(column = "fitness")
+    # Columns
+    columns = ["fitness", "energy_used", 
+               
+               "x_distance", "tot_xdistance", "xmax", "y_distance", "tot_ydistance",
+               
+               "min_dx", "dx25", "mean_dx", "median_dx", "dx75", "max_dx", "std_dx",
+               
+               "min_dy", "dy25", "mean_dy", "median_dy", "dy75", "max_dy", "std_dy",
+                
+                "energy_used_min", "energy_used_25", "energy_used_mean", "energy_used_median",
+                "energy_used_75", "energy_used_max", "energy_used_std",
+
+                "force_std_motor_min", "force_std_motor_25", "force_std_motor_mean", "force_std_motor_median",
+                "force_std_motor_75", "force_std_motor_max", "force_std_motor_std",
+
+                "force_std_all_min", "force_std_all_25", "force_std_all_mean", "force_std_all_median",
+                "force_std_all_75", "force_std_all_max", "force_std_all_std",
+
+                "efficiency", "efficiency_min", "efficiency_25", "efficiency_mean", "efficiency_median",
+                "efficiency_75", "efficiency_max", "efficiency_std",
+
+                "balance"]
+
+    # Remove and create plots folder
+    os.system("rm -rf plots")
+    os.system("mkdir plots")
+
+    # Plot
+    for column in columns:
+        main(column = column)
 
 
 # Planning
@@ -128,3 +159,4 @@ if __name__ == "__main__":
 # Paar plaatjes controleren
 # Probleem met balance
 # Crossover voor brein indien GRN?
+# Moet ik de offspring ook niet opslaan???

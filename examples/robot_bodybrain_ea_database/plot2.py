@@ -352,9 +352,9 @@ def get_new_robot(max_parts):
 
 bodies = []
 grids, ids = {}, pd.DataFrame([], columns = ["id", "count"])
-ngrids = [] # 1030 total
-compute2spend = {1: 10, 2: 10, 3: 10, 4: 10, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10,
-                 11: 10, 12: 10, 13: 10, 14: 10, 15: 10, 16: 10, 17: 10, 18: 10, 19: 10, 20: 10}
+ngrids = [] # 3000 total
+compute2spend = {1: 1000, 2: 1000, 3: 1000, 4: 1000, 5: 1000, 6: 1000, 7: 1000, 8: 1000, 9: 1000, 10: 1000,
+                 11: 1000, 12: 1000, 13: 1000, 14: 1000, 15: 1000, 16: 1000, 17: 1000, 18: 1000, 19: 1000, 20: 1000}
 max_solutions = {1: np.inf, 2: np.inf, 3: np.inf, 4: np.inf, 5: np.inf, 6: np.inf, 7: np.inf, 8: np.inf, 9: np.inf, 10: np.inf,
                  11: np.inf, 12: np.inf, 13: np.inf, 14: np.inf, 15: np.inf, 16: np.inf, 17: np.inf, 18: np.inf, 19: np.inf, 20: np.inf}
 
