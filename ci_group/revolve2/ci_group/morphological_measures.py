@@ -11,6 +11,7 @@ from revolve2.modular_robot.body.base._core import Core
 from revolve2.modular_robot.body.v2._attachment_face_core_v2 import AttachmentFaceCoreV2
 from typing import Generic, TypeVar
 
+# Type variable
 TModule = TypeVar("TModule", bound=np.generic)
 
 
@@ -32,6 +33,7 @@ class MorphologicalMeasures(Generic[TModule]):
         
         # Other measures
         self.grid, self.core_grid_position, self.id_string = body.to_grid(ActiveHingeV2, BrickV2)
+        #self.create_plot(self.grid, z = 0)
 
         # Check if 2D
         assert self.__calculate_is_2d_recur(self.grid), "Body is not 2D."
@@ -52,7 +54,7 @@ class MorphologicalMeasures(Generic[TModule]):
         return self.num_modules / self.max_modules
     
     @property
-    def proportion_2d(self) -> float:
+    def proportion_2d(self) -> float: # Maybe improve the proportion metric, e.g. get std across 4 directions!
         """
         Goal:
             Get the 'proportion' measurement, which is 
@@ -71,6 +73,33 @@ class MorphologicalMeasures(Generic[TModule]):
         return min(self.bounding_box_depth, self.bounding_box_width) / max(
             self.bounding_box_depth, self.bounding_box_width)
     
+
+    @property
+    def proportionNiels(self) -> float:
+        """
+        Goal:
+            Improved version of proportion measurement.
+        -------------------------------------------------------------------
+        """
+        # Get positions
+        positions = [self.core_grid_position[0], self.core_grid_position[1]]
+        print(positions)
+        positions.append(self.bounding_box_depth - self.core_grid_position[0] - 1) # 0, 1, 2 --> 3 - 1 - 1 = 1
+        positions.append(self.bounding_box_width - self.core_grid_position[1] - 1)
+
+        # Get max possible std
+        samples = [self.num_modules, 1, 1, 1] # num_modules = 1 + num_bricks + num_active_hinges
+        std_max = np.sqrt(np.mean([((x - np.mean(samples)) ** 2) for x in samples]))
+
+        # Get std
+        std = np.sqrt(np.mean([((x - np.mean(positions)) ** 2) for x in positions]))
+
+        # Return the proportion
+        if (std_max == 0) or (self.num_modules == 1):
+            return 0.0
+        else:
+            return std / std_max
+        
 
     @property
     def single_neighbour_brick_ratio(self) -> float:
@@ -99,28 +128,50 @@ class MorphologicalMeasures(Generic[TModule]):
         """
         Goal:
             Get the single neighbour ratio.
-        ----------------------------------------------------
+        -------------------------------------------------------------------------------------
         Input:
             num_bricks:
                 The number of bricks of the robot.
-        ----------------------------------------------------
+            num_active_hinges:
+                The number of active hinges of the robot.
+            single_neighbour_bricks:
+                The number of bricks that are connected to exactly one other module.
+            single_neighbour_active_hinges:
+                The number of active hinges that are connected to exactly one other module.
+        -------------------------------------------------------------------------------------
         Output:
             Limbs measurement.
         """
         # ---- Calculate the maximum potential single neighbours based on bricks
         max_potential_single_neighbour_bricks = self.num_bricks - max(0, (self.num_bricks - 2) // 3)
-
-        # ---- Adapt for active hinges
-        # Around core --> 4 spots available
-        spotsleft = max(0, 4 - self.num_bricks)
-        spots2fill = min(spotsleft, self.num_active_hinges)
-
+        
+        # ---- Calculate the spots left for ActiveHinges
+        ## Around core & left-over attachment of non-single neighbour bricks
+        if self.num_bricks <= 4:
+            # Around core --> 4 spots available for modules
+            spotsleft = max(0, 4 - self.num_bricks) # Number of spots left
+            spots2fill_core = min(spotsleft, self.num_active_hinges) # How many can we fill by hinges?
+            # Spots on non-single neighbour bricks
+            spots2fill_nonsingle = 0
+        else:
+            # Around core
+            spots2fill_core = 0
+            # Spots on non-single neighbour bricks
+            # e.g. 5 - 2 = 3 --> 3 % 3 = 0 --> 2 - 0 = 2 spots left (5:3, 6:4, 7:5, (8:6))
+            spots2fill_nonsingle = min(2 - max(0, (self.num_bricks - 2) % 3), self.num_active_hinges)
+        # Assert
+        assert spots2fill_core >= 0, "Number of spots left on core is negative."
+        assert spots2fill_nonsingle >= 0, "Number of spots left on non-single bricks is negative."
+        
+        ## Single neighbour brick attachments
         # At each brick --> 3 spots available
-        addattachments =  min(max_potential_single_neighbour_bricks * 3, (self.num_active_hinges - spots2fill)) # 3 spots available
-        spots2fill += addattachments + (((addattachments - 1) // 3) * - 1) - 1 # Each brick attachment will initially coincide with no increase, then next two will lead to increase
+        left_over_hinges = self.num_active_hinges - spots2fill_core - spots2fill_nonsingle # How many hinges are left?
+        addattachments = min(max_potential_single_neighbour_bricks * 3, left_over_hinges) # 3 spots available
+        # Each hinge-brick attachment will initially coincide with no increase, then next two will lead to increase
+        spots2add = spots2fill_core + spots2fill_nonsingle + addattachments + (((addattachments - 1) // 3) * - 1) - 1 
 
         # ---- Calculate the maximum potential single neighbours for all modules
-        max_potential_single_neighbour_modules = max_potential_single_neighbour_bricks + spots2fill
+        max_potential_single_neighbour_modules = max_potential_single_neighbour_bricks + spots2add
 
         # ------ Calculate the proportion
         if max_potential_single_neighbour_modules == 0:
@@ -226,7 +277,7 @@ class MorphologicalMeasures(Generic[TModule]):
         ------------------------------------------------------------------
         Output:
             Length of limbs measurements: ratio based on mean, ratio based
-            on max and .
+            on max and based on std.
         """
         # ---- Get the maximum possible limb length
         potential_length_of_limb = max(0, self.num_modules - 1)
@@ -319,11 +370,12 @@ class MorphologicalMeasures(Generic[TModule]):
         """
         # Pad the grid
         self.__pad_grid()
-        # Get symmetry scores for both 2D planes
-        self.xz_symmetry = self.__calculate_xz_symmetry()
-        self.yz_symmetry = self.__calculate_yz_symmetry()
-        # Return the maximum symmetry score
-        return max(self.xz_symmetry, self.yz_symmetry)
+        # # Get symmetry scores for both 2D planes
+        # self.xz_symmetry = self.__calculate_xz_symmetry()
+        # self.yz_symmetry = self.__calculate_yz_symmetry()
+        # # Return the maximum symmetry score
+        # return max(self.xz_symmetry, self.yz_symmetry)
+        return 0
     
 
     @property
@@ -337,8 +389,6 @@ class MorphologicalMeasures(Generic[TModule]):
                 The number of modules.
             bounding_box_width:
                 The width of the bounding box around the body.
-            bounding_box_height:
-                The height of the bounding box around the body.
             bounding_box_depth:
                 The depth of the bounding box around the body.
         ----------------------------------------------------
@@ -346,9 +396,9 @@ class MorphologicalMeasures(Generic[TModule]):
             Coverage measurement.
         """
         
-        bounding_box_volume = self.bounding_box_width * self.bounding_box_height * self.bounding_box_depth
+        bounding_box_volume = self.bounding_box_width * self.bounding_box_height * 1
 
-        return (self.num_modules) / (bounding_box_volume - 8) # - 8 because of 3 x 3 core block
+        return self.num_modules / bounding_box_volume
     
     @property
     def branching(self) -> float:
@@ -477,12 +527,13 @@ class MorphologicalMeasures(Generic[TModule]):
         return len(self.active_hinges)
     
     def __calculate_core_is_filled(self) -> bool:
-        return all(
-            [
-                self.core.children.get(child_index) is not None
-                for child_index in self.core.attachment_points.keys()
-            ]
-        )
+        children = []
+        for child_index in self.core.attachment_points.keys():
+            att = self.core.children.get(child_index)
+            if att.children != {}:
+                children.append(True)
+        # Core filled?
+        return sum(children) == 4
 
     def __calculate_filled(self, type):
         if type == Brick:
@@ -552,15 +603,31 @@ class MorphologicalMeasures(Generic[TModule]):
         x, y, _ = self.grid.shape
         # Position of core
         xoffs, yoffs, _ = self.core_grid_position
+
+        # Get offsets
+        xoff_left = xoffs - 1 # Minus 1 because of 3 x 3 core block
+        xoff_right = (self.bounding_box_depth - 1) - xoffs - 1 # e.g. 0, 1, 2, 3 --> 4 - 1 - 1 - 1 = 1
+        yoff_bottom = yoffs - 1
+        yoff_top = (self.bounding_box_width - 1) - yoffs - 1
+
         # Creat empty grid
-        self.symmetry_grid = np.empty(
-            shape=(x + max(0, xoffs), y + max(0, yoffs), 1), dtype=Module) # Hier nog even naar kijken!
+        diff_offx = abs(xoff_left - xoff_right)
+        diff_offy = abs(yoff_bottom - yoff_top)
+        self.symmetry_grid = np.empty(shape = (x + diff_offx, y + diff_offy, 1), dtype = Module)
+        # self.symmetry_grid = np.empty(
+        #     shape=(x + max(0, xoffs - 1), y + max(0, yoffs - 1), 1), dtype=Module) # Hier nog even naar kijken!
         
         # Fill with None
         self.symmetry_grid.fill(None)
         # Fill with grid values
-        self.symmetry_grid[:x, :y, [0]] = self.grid[:, :, [1]]
-        # Plot?
+        #self.symmetry_grid[:x, :y, [0]] = self.grid[:, :, [1]]
+        startx = 0 if xoff_left >= xoff_right else diff_offx
+        endx = x if xoff_left >= xoff_right else x + diff_offx
+        starty = 0 if yoff_bottom >= yoff_top else diff_offy
+        endy = y if yoff_bottom >= yoff_top else y + diff_offy
+        self.symmetry_grid[startx:endx, starty:endy, [0]] = self.grid[:, :, [1]]
+
+        ## Plot?
         #self.create_plot(self.symmetry_grid, z = -1)
 
     def __calculate_xz_symmetry(self) -> float:
