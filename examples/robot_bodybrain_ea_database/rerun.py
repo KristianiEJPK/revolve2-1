@@ -37,7 +37,7 @@ def main() -> None:
         ).fetchall() #.one()
         #assert row is not None
         
-    for row in rows[8:]:
+    for row in rows[0:]:
         genotype = row[0]
         fitness = row[1]
         energy_used = row[2]

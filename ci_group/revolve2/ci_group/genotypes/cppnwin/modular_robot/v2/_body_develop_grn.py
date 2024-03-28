@@ -569,13 +569,21 @@ class DevelopGRN():
         position = vec3_int(parent_pos + forward) 
 
         # ---- Get direction
-        dic = {CoreV2.FRONT: 0, CoreV2.LEFT: 1, CoreV2.BACK: 2, CoreV2.RIGHT: 3}
-        inverse_dic = {0: CoreV2.FRONT, 1: CoreV2.LEFT, 2: CoreV2.BACK, 3: CoreV2.RIGHT}
-        # Direction
-        direction = dic[parent.turtle_direction] + dic[slot]
-        if direction >= len(dic):
-            direction = direction - len(dic)
-        turtle_direction = inverse_dic[direction]
+        # dic = {CoreV2.FRONT: 0, CoreV2.LEFT: 1, CoreV2.BACK: 2, CoreV2.RIGHT: 3}
+        # inverse_dic = {0: CoreV2.FRONT, 1: CoreV2.LEFT, 2: CoreV2.BACK, 3: CoreV2.RIGHT}
+        # # Direction
+        # direction = dic[parent.turtle_direction] + dic[slot]
+        # if direction >= len(dic):
+        #     direction = direction - len(dic)
+        # turtle_direction = inverse_dic[direction]
+        if forward == np.array([-1, 0, 0]):
+            turtle_direction = CoreV2.BACK
+        elif forward == np.array([0, -1, 0]):
+            turtle_direction = CoreV2.RIGHT # Right and left seem to be switched, but otherwise it does not work!
+        elif forward == np.array([1, 0, 0]):
+            turtle_direction = CoreV2.FRONT
+        elif forward == np.array([0, 1, 0]):
+            turtle_direction = CoreV2.LEFT
 
         # # Get coordinates
         # if turtle_direction == CoreV2.LEFT:

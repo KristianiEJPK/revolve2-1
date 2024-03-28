@@ -33,7 +33,7 @@ class MorphologicalMeasures(Generic[TModule]):
         
         # Other measures
         self.grid, self.core_grid_position, self.id_string = body.to_grid(ActiveHingeV2, BrickV2)
-        self.create_plot(self.grid, z = 0)
+        #self.create_plot(self.grid, z = 0)
 
         # Check if 2D
         assert self.__calculate_is_2d_recur(self.grid), "Body is not 2D."
@@ -87,7 +87,7 @@ class MorphologicalMeasures(Generic[TModule]):
         positions.append(self.bounding_box_width - self.core_grid_position[1] - 1)
 
         # Get max possible std
-        samples = [self.num_modules, 1, 1, 1] # num_modules = 1 + num_bricks + num_active_hinges
+        samples = [self.num_modules - 1, 1, 1, 1] # num_modules = 1 + num_bricks + num_active_hinges
         std_max = np.sqrt(np.mean([((x - np.mean(samples)) ** 2) for x in samples]))
 
         # Get std
@@ -193,9 +193,9 @@ class MorphologicalMeasures(Generic[TModule]):
         Output:
             The proportion."""
         
-        # ---- Get the maximum possible double neighbour bricks and active hinges
+        # # ---- Get the maximum possible double neighbour bricks and active hinges
         potential_double_neighbour_bricks_and_active_hinges = max(0, self.num_bricks + self.num_active_hinges - 1)
-        # ---- Get double neighbour bricks and active hinges
+        # # ---- Get double neighbour bricks and active hinges
         num_double_neighbour_bricks = len(self.__calculate_double_neighbour(Brick))
         num_double_neighbour_active_hinges = len(self.__calculate_double_neighbour(ActiveHinge))
 
@@ -282,27 +282,46 @@ class MorphologicalMeasures(Generic[TModule]):
         potential_length_of_limb = max(0, self.num_modules - 1)
 
         # ---- Get limb length (per core direction)
-        limb_length = self.get_limb(self.core)
+        limb_length = np.array(self.get_limb(self.core))
 
-        # ---- Max as fraction of potential length of limb
-        if (potential_length_of_limb == 0) or (self.num_modules == 1):
-            maxrel = 0
-        else: maxrel = max(limb_length) / (potential_length_of_limb)
+        # # ---- Max as fraction of potential length of limb
+        # if (potential_length_of_limb == 0) or (self.num_modules == 1):
+        #     maxrel = 0
+        # else: maxrel = max(limb_length) / (potential_length_of_limb)
 
-        # ---- Mean as fraction of potential length of limb
-        if (potential_length_of_limb == 0) or (self.num_modules == 1):
-            meanrel = 0
-        else: meanrel = np.mean(limb_length) / (potential_length_of_limb)
+        # # ---- Mean as fraction of potential length of limb
+        # if (potential_length_of_limb == 0) or (self.num_modules == 1):
+        #     meanrel = 0
+        # else: meanrel = np.mean(limb_length) / (potential_length_of_limb)
 
-        # ---- Standard deviation as fraction of maximal unbalanced limb length
-        samples = [self.num_modules - 1, 0, 0, 0]
-        std_max = np.sqrt(np.mean([((x - np.mean(samples)) ** 2) for x in samples]))
-        if (std_max == 0) or (self.num_modules == 1):
-            stdrel = 0
+        # # ---- Standard deviation as fraction of maximal unbalanced limb length
+        # samples = [self.num_modules - 1, 0, 0, 0]
+        # std_max = np.sqrt(np.mean([((x - np.mean(samples)) ** 2) for x in samples]))
+        # if (std_max == 0) or (self.num_modules == 1):
+        #     stdrel = 0
+        # else:
+        #     stdrel = np.sqrt(np.mean([((x - np.mean(limb_length)) ** 2) for x in limb_length])) / std_max
+
+        maxrel = np.max(limb_length) / potential_length_of_limb
+        if sum(limb_length) == 0:
+            meanrel, stdrel, nlimbs = 0, 0, 0
         else:
-            stdrel = np.sqrt(np.mean([((x - np.mean(limb_length)) ** 2) for x in limb_length])) / std_max
+            # Get limbs
+            limbs = limb_length[limb_length > 0]
+            # Mean length
+            meanrel = np.mean(limbs) / potential_length_of_limb
+            # Standard deviation
+            samples = [self.num_modules - 1] + [0] * (len(limbs) - 1)
+            std_max = np.sqrt(np.mean([((x - np.mean(samples)) ** 2) for x in samples]))
+            if (std_max == 0) or (self.num_modules == 1):
+                stdrel = 0
+            else:
+                stdrel = np.sqrt(np.mean([((x - np.mean(limbs)) ** 2) for x in limbs])) / std_max
+                
+            # Number of limbs
+            nlimbs = len(limbs)
 
-        return maxrel, meanrel, stdrel
+        return maxrel, meanrel, stdrel, nlimbs
     
     @property
     def joints(self):

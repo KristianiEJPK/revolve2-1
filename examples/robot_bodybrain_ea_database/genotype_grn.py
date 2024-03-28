@@ -102,9 +102,9 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2GRN, BrainGenotypeCpgOrm):
         if random_number > crossover_prob:
             return parent1
         else:
-            # Perform crossover for body and brain
+            # Perform crossover for body (not brain in case of GRN --> CPPN not desired to have crossover)
             body = cls.crossover_body(parent1, parent2, rng)
-            brain = cls.crossover_brain(parent1, parent2, rng)
+            brain = parent1.brain #cls.crossover_brain(parent1, parent2, rng)
 
             return Genotype(body=body.body, brain=brain.brain)
 
