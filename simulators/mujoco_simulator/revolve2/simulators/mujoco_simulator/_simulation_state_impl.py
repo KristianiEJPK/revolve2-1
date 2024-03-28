@@ -131,3 +131,4 @@ class SimulationStateImpl(SimulationState):
         """
 
         return self._actuator_force.copy()
+    

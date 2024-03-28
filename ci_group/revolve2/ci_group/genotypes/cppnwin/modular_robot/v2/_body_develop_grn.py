@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+from pyrr import Vector3, Quaternion
 from revolve2.modular_robot.body import Module
 from revolve2.modular_robot.body.v2 import ActiveHingeV2, BodyV2, BrickV2, CoreV2
 
@@ -32,6 +33,10 @@ class ModuleGRN:
     children: list
     _parent: object
     direction_from_parent: int
+    forward: dict[Vector3[np.int_]]
+    up: Vector3[np.int_]
+    attachment_points: dict
+
 
 class DevelopGRN():
     """Goal:
@@ -95,19 +100,19 @@ class DevelopGRN():
         # Initialize
         self = self.develop_body()
 
-        # # ---- Plot
-        # # Create a custom colormap with 4 colors
-        # cmap = plt.cm.colors.ListedColormap(['grey', 'red', 'black', 'white', 'blue'])
+        # ---- Plot
+        # Create a custom colormap with 4 colors
+        cmap = plt.cm.colors.ListedColormap(['grey', 'red', 'black', 'white', 'blue'])
 
-        # # Create a normalized color map
-        # norm = plt.cm.colors.Normalize(vmin=0, vmax=4)
+        # Create a normalized color map
+        norm = plt.cm.colors.Normalize(vmin=0, vmax=4)
 
-        # # Create an array of colors based on the values
-        # plt.imshow(self.grid, cmap = cmap, norm = norm)
-        # plt.xticks(np.arange(0, self.grid.shape[0], 1))
-        # plt.yticks(np.arange(0, self.grid.shape[1], 1))
-        # plt.grid(True, which='both')
-        # plt.show()
+        # Create an array of colors based on the values
+        plt.imshow(self.grid, cmap = cmap, norm = norm)
+        plt.xticks(np.arange(0, self.grid.shape[0], 1))
+        plt.yticks(np.arange(0, self.grid.shape[1], 1))
+        plt.grid(True, which='both')
+        plt.show()
 
         return self.phenotype_body
 
@@ -272,9 +277,18 @@ class DevelopGRN():
                 self.queried_substrate[coordcore] = self.phenotype_body.core
 
         # Create new module
+        forwards, faces = {}, {}
+        for idx_attachment, attachment_face in self.phenotype_body.core_v2.attachment_faces.items():
+            if idx_attachment in [0, 2]:
+                forwards[idx_attachment] = Vector3([1, 0, 0])
+            else:
+                forwards[idx_attachment] = Vector3([-1, 0, 0])
+            faces[idx_attachment] = attachment_face.attachment_points
+
         core_module = ModuleGRN(self.phenotype_body.core, self.quantity_modules, 
                             orientation, (0, 0), CoreV2.FRONT, new_cell, 
-                            [None, None, None, None], None, None)
+                            [None, None, None, None], None, None, 
+                            forwards, Vector3([0, 0, 1]), faces)
 
         return core_module
 
@@ -441,7 +455,7 @@ class DevelopGRN():
                     slot = deepcopy(slot4coordinates)
 
                 # Get coordinates and turtle direction
-                potential_module_coord, turtle_direction = self.calculate_coordinates(cell.developed_module, slot4coordinates)
+                potential_module_coord, turtle_direction, forward = self.calculate_coordinates(cell.developed_module, slot4coordinates, slot)
                 if (potential_module_coord not in self.queried_substrate.keys()) and (self.quantity_modules < self.max_modules - 1):
                     module_type = modules_types[idx_max]
 
@@ -449,21 +463,22 @@ class DevelopGRN():
                     orientation = 1 if concentration3 > 0.5 and module_type == ActiveHingeV2 else 0
                     # Get absolute rotation
                     absolute_rotation = 0
-                    if module_type == ActiveHingeV2 and orientation == 1:
-                        if type(cell.developed_module.module) == ActiveHingeV2 and cell.developed_module._absolute_rotation == 1:
+                    if (module_type == ActiveHingeV2) and (orientation == 1):
+                        if (type(cell.developed_module.module) == ActiveHingeV2) and (cell.developed_module._absolute_rotation == 1):
                             absolute_rotation = 0
                         else:
                             absolute_rotation = 1
                     else:
-                        if type(cell.developed_module.module) == ActiveHingeV2 and cell.developed_module._absolute_rotation == 1:
+                        if (type(cell.developed_module.module) == ActiveHingeV2) and (cell.developed_module._absolute_rotation == 1):
                             absolute_rotation = 1
                     # Adapt orientation
-                    if module_type == BrickV2 and type(cell.developed_module.module) == ActiveHingeV2 and cell.developed_module._absolute_rotation == 1:
+                    if (module_type == BrickV2) and (type(cell.developed_module.module) == ActiveHingeV2) and (cell.developed_module._absolute_rotation == 1):
                         orientation = 1
 
                     # Set characteristics of new model
                     # Notes: new_module is the same as child, slot is the same as attachment index
-                    new_module = module_type(orientation * (math.pi / 2.0))
+                    angle = orientation * (math.pi / 2.0)
+                    new_module = module_type(angle)
                     if type(cell.developed_module.module) not in [ActiveHingeV2, BrickV2]:
                         cell.developed_module.module.attachment_faces[slot].set_child(new_module, 4)
                     else:
@@ -473,10 +488,12 @@ class DevelopGRN():
                     self.quantity_modules += 1
 
                     # Create wrapper for new module
+                    up = rotate(cell.developed_module.up, forward, Quaternion.from_eulers([angle, 0, 0]))
                     module2add = ModuleGRN(new_module, str(self.quantity_modules), absolute_rotation, 
                                            potential_module_coord, turtle_direction, cell, 
                                            [None, None, None, None], cell.developed_module,
-                                            slot4coordinates)
+                                            slot4coordinates, {0: forward}, up,
+                                            new_module.attachment_points)
 
                     cell.developed_module.children[slot4coordinates] = module2add
                     self.new_cell(cell, module2add, slot4coordinates)
@@ -535,53 +552,58 @@ class DevelopGRN():
         new_cell.developed_module = new_module
         new_module.cell = new_cell
     
-    def calculate_coordinates(self, parent, slot):
+    def calculate_coordinates(self, parent, slot, slot_non_adapted):
         """Goal:
             Calculate the actual 2d direction and coordinates of new module using relative-to-parent position as reference."""
-        # Initialize
-        dic = {CoreV2.FRONT: 0,
-               CoreV2.LEFT: 1,
-               CoreV2.BACK: 2,
-               CoreV2.RIGHT: 3}
-
-        inverse_dic = {0: CoreV2.FRONT,
-                       1: CoreV2.LEFT,
-                       2: CoreV2.BACK,
-                       3: CoreV2.RIGHT}
         
+        # ---- Apply transformation
+        if type(parent.module) == CoreV2:
+            attachment_point = parent.attachment_points[slot_non_adapted][4] # Middle 
+            fwrd = parent.forward[slot_non_adapted]
+        else:
+            attachment_point = parent.attachment_points[slot_non_adapted] # Middle
+            fwrd = parent.forward[0] # Only one
+        
+        forward = rotate(fwrd, parent.up, attachment_point.orientation)
+        parent_pos = np.array([parent.substrate_coordinates[0], parent.substrate_coordinates[1], 0])
+        position = vec3_int(parent_pos + forward) 
 
-        # Get direction
+        # ---- Get direction
+        dic = {CoreV2.FRONT: 0, CoreV2.LEFT: 1, CoreV2.BACK: 2, CoreV2.RIGHT: 3}
+        inverse_dic = {0: CoreV2.FRONT, 1: CoreV2.LEFT, 2: CoreV2.BACK, 3: CoreV2.RIGHT}
+        # Direction
         direction = dic[parent.turtle_direction] + dic[slot]
         if direction >= len(dic):
             direction = direction - len(dic)
         turtle_direction = inverse_dic[direction]
 
-        # Get coordinates
-        if turtle_direction == CoreV2.LEFT:
-            coordinates = (parent.substrate_coordinates[0] - 1,
-                           parent.substrate_coordinates[1])
-        if turtle_direction == CoreV2.RIGHT:
-            coordinates = (parent.substrate_coordinates[0] + 1,
-                           parent.substrate_coordinates[1])
-        if turtle_direction == CoreV2.FRONT:
-            coordinates = (parent.substrate_coordinates[0],
-                           parent.substrate_coordinates[1] + 1)
-        if turtle_direction == CoreV2.BACK:
-            coordinates = (parent.substrate_coordinates[0],
-                           parent.substrate_coordinates[1] - 1)
+        # # Get coordinates
+        # if turtle_direction == CoreV2.LEFT:
+        #     coordinates = (parent.substrate_coordinates[0] - 1,
+        #                    parent.substrate_coordinates[1])
+        # if turtle_direction == CoreV2.RIGHT:
+        #     coordinates = (parent.substrate_coordinates[0] + 1,
+        #                    parent.substrate_coordinates[1])
+        # if turtle_direction == CoreV2.FRONT:
+        #     coordinates = (parent.substrate_coordinates[0],
+        #                    parent.substrate_coordinates[1] + 1)
+        # if turtle_direction == CoreV2.BACK:
+        #     coordinates = (parent.substrate_coordinates[0],
+        #                    parent.substrate_coordinates[1] - 1)
         
         # Apply correction for 3 x 3 grid
         if self.mode_core_mult and (type(parent.module) == CoreV2):
-            if turtle_direction == CoreV2.LEFT:
-                coordinates = (coordinates[0] - 1, coordinates[1])
-            elif turtle_direction == CoreV2.RIGHT:
-                coordinates = (coordinates[0] + 1, coordinates[1])
-            elif turtle_direction == CoreV2.FRONT:
-                coordinates = (coordinates[0], coordinates[1] + 1)
-            elif turtle_direction == CoreV2.BACK:
-                coordinates = (coordinates[0], coordinates[1] - 1)
+            if position == np.array([-1, 0, 0]):
+                position = (position[0] - 1, position[1])
+            elif position == np.array([1, 0, 0]):
+                position = (position[0] + 1, position[1])
+            elif position == np.array([0, 1, 0]):
+                position = (position[0], position[1] + 1)
+            elif position == np.array([0, -1, 0]):
+                position = (position[0], position[1] - 1)
+        coordinates = (position[0], position[1])
 
-        return coordinates, turtle_direction
+        return coordinates, turtle_direction, forward
 
 class Cell:
     """Goal:
@@ -596,7 +618,33 @@ class Cell:
 
 
 
+def rotate(a: Vector3, b: Vector3, rotation: Quaternion) -> Vector3:
+    """
+    Rotates vector a a given angle around b.
 
+    :param a: Vector a.
+    :param b: Vector b.
+    :param rotation: The quaternion for rotation.
+    :returns: A copy of a, rotated.
+    """
+    cos_angle: int = int(round(np.cos(rotation.angle)))
+    sin_angle: int = int(round(np.sin(rotation.angle)))
+
+    vec: Vector3 = (
+        a * cos_angle + sin_angle * b.cross(a) + (1 - cos_angle) * b.dot(a) * b
+    )
+    return vec
+
+
+def vec3_int(vector: Vector3) -> Vector3[np.int_]:
+    """
+    Cast a Vector3 object to an integer only Vector3.
+
+    :param vector: The vector.
+    :return: The integer vector.
+    """
+    x, y, z = map(lambda v: int(round(v)), vector)
+    return Vector3([x, y, z], dtype=np.int64)
 
 
     

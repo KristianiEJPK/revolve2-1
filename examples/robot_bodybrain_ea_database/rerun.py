@@ -33,11 +33,11 @@ def main() -> None:
             select(Genotype, Individual.fitness, Individual.energy_used, Individual.efficiency,
                    Individual.x_distance,)
             .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
-            .order_by(Individual.fitness.desc()).limit(1000)
+            .order_by(Individual.population_id.asc()).limit(1000)
         ).fetchall() #.one()
         #assert row is not None
         
-    for row in rows[999:]:
+    for row in rows[8:]:
         genotype = row[0]
         fitness = row[1]
         energy_used = row[2]

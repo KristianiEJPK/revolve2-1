@@ -61,3 +61,4 @@ class ModularRobotSimulationState:
         ------------------------------------------------
         """
         return self._simulation_state.get_actuator_force()
+
