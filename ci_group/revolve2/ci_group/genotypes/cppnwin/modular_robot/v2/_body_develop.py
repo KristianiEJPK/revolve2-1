@@ -206,19 +206,19 @@ def develop(
             break
     
 
-    # ---- Plot
-    # Create a custom colormap with 4 colors
-    cmap = plt.cm.colors.ListedColormap(['grey', 'red', 'black', 'white', 'blue'])
+    # # ---- Plot
+    # # Create a custom colormap with 4 colors
+    # cmap = plt.cm.colors.ListedColormap(['grey', 'red', 'black', 'white', 'blue'])
 
-    # Create a normalized color map
-    norm = plt.cm.colors.Normalize(vmin=0, vmax=4)
+    # # Create a normalized color map
+    # norm = plt.cm.colors.Normalize(vmin=0, vmax=4)
 
-    # Create an array of colors based on the values
-    plt.imshow(grid[:, :, core_position[2]], cmap = cmap, norm = norm)
-    plt.xticks(np.arange(0, grid.shape[0], 1))
-    plt.yticks(np.arange(0, grid.shape[1], 1))
-    plt.grid(True, which='both')
-    plt.show()
+    # # Create an array of colors based on the values
+    # plt.imshow(grid[:, :, core_position[2]], cmap = cmap, norm = norm)
+    # plt.xticks(np.arange(0, grid.shape[0], 1))
+    # plt.yticks(np.arange(0, grid.shape[1], 1))
+    # plt.grid(True, which='both')
+    # plt.show()
     
     return body
 

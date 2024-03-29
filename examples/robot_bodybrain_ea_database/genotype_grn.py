@@ -104,9 +104,8 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2GRN, BrainGenotypeCpgOrm):
         else:
             # Perform crossover for body (not brain in case of GRN --> CPPN not desired to have crossover)
             body = cls.crossover_body(parent1, parent2, rng)
-            brain = parent1.brain #cls.crossover_brain(parent1, parent2, rng)
 
-            return Genotype(body=body.body, brain=brain.brain)
+            return Genotype(body=body.body, brain = parent1.brain)
 
     def develop(self, include_bias, max_parts, mode_core_mult) -> ModularRobot:
         """

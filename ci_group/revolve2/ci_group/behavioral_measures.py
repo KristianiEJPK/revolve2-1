@@ -185,7 +185,6 @@ class BehavioralMeasures():
         # Balance
         self.balance = (self.roll + self.pitch) / (len(self.states) * 180 * 2)
         self.balance = 1 - self.balance
-        print(f"Balance: {self.balance}")
     
         return self
 

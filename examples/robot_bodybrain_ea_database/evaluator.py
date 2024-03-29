@@ -1,5 +1,5 @@
 """Evaluator class."""
-import config
+import os
 from revolve2.ci_group import fitness_functions, terrains
 from revolve2.ci_group.morphological_measures import MorphologicalMeasures
 from revolve2.ci_group.behavioral_measures import BehavioralMeasures
@@ -106,7 +106,7 @@ class Evaluator:
         behavioral_measures = []
         for irobot, robot in enumerate(robots):
             # ---- Morphological measures
-            morphological_measures = MorphologicalMeasures(robot.body, robot.brain, config.MAX_PARTS)
+            #morphological_measures = MorphologicalMeasures(robot.body, robot.brain, int(os.environ["MAXPARTS"]))
 
             # ---- Behavioral Measures
             # States

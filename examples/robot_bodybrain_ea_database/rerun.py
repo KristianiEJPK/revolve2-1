@@ -6,6 +6,7 @@ import config
 from evaluator import Evaluator
 import os
 os.environ['ALGORITHM'] = config.ALGORITHM
+os.environ['MAXPARTS'] = str(config.MAX_PARTS)
 
 if os.environ["Algorithm"] == "CPPN":
     from genotype import Genotype
@@ -37,7 +38,7 @@ def main() -> None:
         ).fetchall() #.one()
         #assert row is not None
         
-    for row in rows[0:]:
+    for row in rows[20:]:
         genotype = row[0]
         fitness = row[1]
         energy_used = row[2]

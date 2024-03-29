@@ -6,6 +6,7 @@ import os
 
 # Set algorithm
 os.environ['ALGORITHM'] = config.ALGORITHM
+os.environ['MAXPARTS'] = str(config.MAX_PARTS)
 if os.environ["Algorithm"] == "CPPN":
     from genotype import Genotype
 elif os.environ["Algorithm"] == "GRN":
@@ -333,13 +334,12 @@ def run_experiment(dbengine: Engine) -> None:
     logging.info("Start optimization process.")
     # Initialize random search boolean to True
     random_search = True
-    while generation.generation_index < config.NUM_GENERATIONS:
-        logging.info(
-            f"Generation {generation.generation_index + 1} / {config.NUM_GENERATIONS}."
-        )
+    while generation.generation_index < (config.NUM_GENERATIONS * 2): 
+        # Log the generation number.
+        logging.info(f"Generation {int(generation.generation_index / 2 + 1)}")
 
         # Check if random search should be performed
-        if generation.generation_index == config.NUM_RANDOM_SEARCH:
+        if generation.generation_index == (config.NUM_RANDOM_SEARCH * 2):
             random_search = False
 
         # Create offspring.
@@ -420,6 +420,19 @@ def run_experiment(dbengine: Engine) -> None:
                 for genotype, fitness, behave_measure in zip(offspring_genotypes, offspring_fitnesses, offspring_behavioral_measures)
             ]
         )
+
+
+        # Create 'fake' generation for offspring and save it to the database.
+        generation = Generation(
+            experiment = experiment,
+            generation_index=generation.generation_index + 1,
+            population = offspring_population,
+        )
+
+        logging.info("Saving offspring.")
+        with Session(dbengine, expire_on_commit=False) as session:
+            session.add(generation)
+            session.commit()
 
         # Create the next population by selecting survivors.
         population, idx4selection = select_survivors(
