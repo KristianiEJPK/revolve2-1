@@ -50,15 +50,15 @@ class DevelopGRN():
         self.genotype = genotype # Genotype
         self.mode_core_mult = mode_core_mult # Mode core mult --> grid 3 x 3
 
-        # Grid
-        if not self.mode_core_mult:
-            self.grid = np.zeros(shape=(max_modules * 2 + 1, max_modules * 2 + 1), dtype=np.uint8)
-            self.grid[max_modules + 1, max_modules + 1] = 1
-            self.grid_origin = (max_modules + 1, max_modules + 1)
-        else:
-            self.grid = np.zeros(shape=(max_modules * 2 + 4, max_modules * 2 + 4), dtype=np.uint8)
-            self.grid[max_modules + 1:max_modules + 4, max_modules + 1:max_modules + 4] = 1
-            self.grid_origin = (max_modules + 2, max_modules + 2)
+        # # Grid
+        # if not self.mode_core_mult:
+        #     self.grid = np.zeros(shape=(max_modules * 2 + 1, max_modules * 2 + 1), dtype=np.uint8)
+        #     self.grid[max_modules + 1, max_modules + 1] = 1
+        #     self.grid_origin = (max_modules + 1, max_modules + 1)
+        # else:
+        #     self.grid = np.zeros(shape=(max_modules * 2 + 4, max_modules * 2 + 4), dtype=np.uint8)
+        #     self.grid[max_modules + 1:max_modules + 4, max_modules + 1:max_modules + 4] = 1
+        #     self.grid_origin = (max_modules + 2, max_modules + 2)
 
 
         # Internal variables
@@ -498,13 +498,13 @@ class DevelopGRN():
                     cell.developed_module.children[slot4coordinates] = module2add
                     self.new_cell(cell, module2add, slot4coordinates)
 
-                    # Add to grid
-                    if type(module2add.module) == ActiveHingeV2:
-                        self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 3
-                    elif type(module2add.module) == BrickV2:
-                        self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 4
-                    elif type(module2add.module) == CoreV2:
-                        self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 1
+                    # # Add to grid
+                    # if type(module2add.module) == ActiveHingeV2:
+                    #     self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 3
+                    # elif type(module2add.module) == BrickV2:
+                    #     self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 4
+                    # elif type(module2add.module) == CoreV2:
+                    #     self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 1
 
 
     def decay(self, tf, cell):
