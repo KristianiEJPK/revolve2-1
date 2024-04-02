@@ -193,3 +193,4 @@ def _deserialize_body(target: BodyGenotypeOrmV2, context: orm.QueryContext) -> N
     body = multineat.Genome()
     body.Deserialize(target._serialized_body)
     target.body = body
+    target.mapping_seed = np.frombuffer(target.mapping_seed, dtype=np.uint64)[0]

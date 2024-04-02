@@ -17,7 +17,7 @@ from revolve2.experimentation.database import OpenMethod, open_database_sqlite
 from revolve2.experimentation.logging import setup_logging
 
 
-def main(column) -> None:
+def main(column, path) -> None:
     """Run the program."""
     setup_logging()
 
@@ -103,7 +103,7 @@ def main(column) -> None:
     plt.legend()
     plt.grid()
     plt.tight_layout()
-    plt.savefig(f"plots/{column}.png")
+    plt.savefig(path + f"//{column}.png")
     #plt.show()
 
 
@@ -151,13 +151,14 @@ if __name__ == "__main__":
 
                 "balance"]
 
-    # Remove and create plots folder
-    os.system("rm -rf plots")
-    os.system("mkdir plots")
+    # If folder does not exist, create it
+    path = f"C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\Test\\{config.ALGORITHM}\\BehavioralMeasures\\plots"
+    if not os.path.exists(path):
+        os.makedirs(path)
 
     # Plot
     for column in columns:
-        main(column = column)
+        main(column = column, path = path)
 
 
 # Planning

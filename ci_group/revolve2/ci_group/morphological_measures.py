@@ -85,9 +85,10 @@ class MorphologicalMeasures(Generic[TModule]):
         positions = [self.core_grid_position[0], self.core_grid_position[1]]
         positions.append(self.bounding_box_depth - self.core_grid_position[0] - 1) # 0, 1, 2 --> 3 - 1 - 1 = 1
         positions.append(self.bounding_box_width - self.core_grid_position[1] - 1)
+        
 
         # Get max possible std
-        samples = [self.num_modules - 1, 1, 1, 1] # num_modules = 1 + num_bricks + num_active_hinges
+        samples = [self.num_modules, 1, 1, 1] # num_modules = 1 + num_bricks + num_active_hinges
         std_max = np.sqrt(np.mean([((x - np.mean(samples)) ** 2) for x in samples]))
 
         # Get std
@@ -302,7 +303,13 @@ class MorphologicalMeasures(Generic[TModule]):
         # else:
         #     stdrel = np.sqrt(np.mean([((x - np.mean(limb_length)) ** 2) for x in limb_length])) / std_max
 
-        maxrel = np.max(limb_length) / potential_length_of_limb
+        # Max
+        if (potential_length_of_limb == 0):
+            maxrel = 0
+        else:
+            maxrel = np.max(limb_length) / potential_length_of_limb
+
+        # Mean, std and number of limbs
         if sum(limb_length) == 0:
             meanrel, stdrel, nlimbs = 0, 0, 0
         else:

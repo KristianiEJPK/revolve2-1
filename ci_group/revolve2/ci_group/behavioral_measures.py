@@ -84,6 +84,7 @@ class BehavioralMeasures():
 
         # Overall Measures for Distance    
         self.x_distance = end_state[0] - start_state[0]
+        print(self.x_distance)
         self.tot_xdistance = sum([abs(histx) for histx in history["dx"]]) # Accumulated distance
         self.xmax = np.max(np.cumsum(history["dx"])) # Maximum distance reached
         self.y_distance = end_state[1] - start_state[1]

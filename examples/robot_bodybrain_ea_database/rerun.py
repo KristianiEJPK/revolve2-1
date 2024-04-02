@@ -34,11 +34,11 @@ def main() -> None:
             select(Genotype, Individual.fitness, Individual.energy_used, Individual.efficiency,
                    Individual.x_distance,)
             .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
-            .order_by(Individual.population_id.asc()).limit(1000)
+            .order_by(Individual.fitness.desc()).limit(1000) #Individual.population_id.desc()
         ).fetchall() #.one()
         #assert row is not None
         
-    for row in rows[20:]:
+    for row in rows[9:]:
         genotype = row[0]
         fitness = row[1]
         energy_used = row[2]
@@ -54,7 +54,7 @@ def main() -> None:
         elif os.environ["Algorithm"] == "GRN":
             modular_robot = genotype.develop(include_bias = config.CPPNBIAS, max_parts = config.MAX_PARTS, mode_core_mult = config.MODE_CORE_MULT)
 
-        logging.info(f"Best fitness: {fitness}")
+        logging.info(f"Fitness: {fitness}")
         logging.info(f"Energy used: {energy_used}")
         logging.info(f"Efficiency: {efficiency}")
         logging.info(f"X distance: {x_distance}")

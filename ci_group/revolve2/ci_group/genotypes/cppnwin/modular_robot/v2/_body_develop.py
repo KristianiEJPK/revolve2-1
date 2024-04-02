@@ -115,7 +115,7 @@ def develop(
                 0, "Core", 0, 0, attachment_face,))
 
     # ---- Explore all attachment points for development --> recursive
-    for _ in range(0, max_parts):
+    for _ in range(0, (max_parts - 1)):
         # Get parent module and id from "to_explore"
         module = rng.choice(to_explore)
         module_id = module.module_reference.uuid
@@ -205,7 +205,6 @@ def develop(
         if (to_explore == []) or (collision):
             break
     
-
     # # ---- Plot
     # # Create a custom colormap with 4 colors
     # cmap = plt.cm.colors.ListedColormap(['grey', 'red', 'black', 'white', 'blue'])
