@@ -473,14 +473,18 @@ def run_experiment(dbengine: Engine) -> None:
 def main() -> None:
     """Run the program."""
     # Set up logging.
+    print("Able to start main --> Test for DAS")
     setup_logging(file_name="log.txt")
+    print("Able to create logger --> Test for DAS")
 
     # Open the database, only if it does not already exists.
     dbengine = open_database_sqlite(
         config.DATABASE_FILE, open_method=OpenMethod.NOT_EXISTS_AND_CREATE
     )
+    print("Able to create database --> Test for DAS")
     # Create the structure of the database.
     Base.metadata.create_all(dbengine)
+    print("Able to create database structure --> Test for DAS")
 
     # Run the experiment several times.
     for _ in range(config.NUM_REPETITIONS):
