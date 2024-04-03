@@ -353,7 +353,7 @@ def run_experiment(dbengine: Engine) -> None:
                 ).mutate(innov_db_body, innov_db_brain, rng, config.MUTATION_PROBABILITY)
                 for parent1_i, parent2_i in parents
             ]
-        elif os.environ["ALGORITHM"] == "GRN": # Crossover klopt nog niet helemaal?
+        elif os.environ["ALGORITHM"] == "GRN":
             offspring_genotypes = [
                 Genotype.crossover(
                     population.individuals[parent1_i].genotype,
