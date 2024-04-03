@@ -492,4 +492,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    print("pre main --> Test for DAS")
     main()
