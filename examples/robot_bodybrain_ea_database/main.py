@@ -31,7 +31,6 @@ from revolve2.experimentation.rng import make_rng, seed_from_time
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-print("Able to load modules --> DAS?")
 def select_parents(
     rng: np.random.Generator,
     population: Population,
@@ -220,6 +219,8 @@ def run_experiment(dbengine: Engine) -> None:
     rng_seed = seed_from_time()
     rng = make_rng(rng_seed)
 
+    print("Able to create random seed --> Test for DAS")
+
     # ---- Create and save the experiment instance.
     experiment = Experiment(rng_seed = rng_seed)
     logging.info("Saving experiment configuration.")
@@ -227,11 +228,15 @@ def run_experiment(dbengine: Engine) -> None:
         session.add(experiment)
         session.commit()
 
+    print("Able to create database --> Test for DAS")
+
     # ---- Intialize the evaluator that will be used to evaluate robots.
     evaluator = Evaluator(headless = True, num_simulators = config.NUM_SIMULATORS,
                           terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
                           simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY, 
                           simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY)
+
+    print("Able to evaluate --> Test for DAS")
 
     # ---- CPPN innovation databases.
     # Niet nodig voor GRN???
