@@ -12,6 +12,8 @@ if os.environ["Algorithm"] == "CPPN":
     from genotype import Genotype
 elif os.environ["Algorithm"] == "GRN":
     from genotype_grn import Genotype
+else:
+    raise ValueError("ALGORITHM must be either GRN or CPPN")
 from individual import Individual
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -45,15 +47,16 @@ def main() -> None:
         efficiency = row[3]
         x_distance = row[4]
 
-        if os.environ["Algorithm"] == "CPPN":
+        if os.environ["ALGORITHM"] == "CPPN":
             modular_robot = genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
                 include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
                 max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
                 mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
                 mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL)
-        elif os.environ["Algorithm"] == "GRN":
+        elif os.environ["ALGORITHM"] == "GRN":
             modular_robot = genotype.develop(include_bias = config.CPPNBIAS, max_parts = config.MAX_PARTS, mode_core_mult = config.MODE_CORE_MULT)
-
+        else:
+            raise ValueError("ALGORITHM must be either GRN or CPPN")
         logging.info(f"Fitness: {fitness}")
         logging.info(f"Energy used: {energy_used}")
         logging.info(f"Efficiency: {efficiency}")

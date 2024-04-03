@@ -5,10 +5,12 @@ from dataclasses import dataclass
 from base import Base
 import os
 
-if os.environ["Algorithm"] == "CPPN":
+if os.environ["ALGORITHM"] == "CPPN":
     from genotype import Genotype
-elif os.environ["Algorithm"] == "GRN":
+elif os.environ["ALGORITHM"] == "GRN":
     from genotype_grn import Genotype
+else:
+    raise ValueError("ALGORITHM must be either GRN or CPPN")
 
 from revolve2.experimentation.optimization.ea import Individual as GenericIndividual
 

@@ -7,10 +7,12 @@ import os
 # Set algorithm
 os.environ['ALGORITHM'] = config.ALGORITHM
 os.environ['MAXPARTS'] = str(config.MAX_PARTS)
-if os.environ["Algorithm"] == "CPPN":
+if os.environ["ALGORITHM"] == "CPPN":
     from genotype import Genotype
-elif os.environ["Algorithm"] == "GRN":
+elif os.environ["ALGORITHM"] == "GRN":
     from genotype_grn import Genotype
+else:
+    raise ValueError("ALGORITHM must be either GRN or CPPN")
 
 # Get other packages
 from base import Base
@@ -257,6 +259,8 @@ def run_experiment(dbengine: Engine) -> None:
             )
             for _ in range(config.POPULATION_SIZE)
         ]
+    else:
+        raise ValueError("ALGORITHM must be either GRN or CPPN")
     # Evaluate the initial population.
     logging.info("Evaluating initial population.")
     if os.environ["ALGORITHM"] == "CPPN":
@@ -274,6 +278,8 @@ def run_experiment(dbengine: Engine) -> None:
                 max_parts = config.MAX_PARTS, mode_core_mult = config.MODE_CORE_MULT
                 ) for genotype in initial_genotypes],
         )
+    else:
+        raise ValueError("ALGORITHM must be either GRN or CPPN")
 
     # Create a population of individuals, combining genotype with fitness.
     population = Population(
@@ -362,7 +368,8 @@ def run_experiment(dbengine: Engine) -> None:
                 ).mutate(innov_db_brain, rng, config.MUTATION_PROBABILITY)
                 for parent1_i, parent2_i in parents
             ]
-
+        else:
+            raise ValueError("ALGORITHM must be either GRN or CPPN")
         # Evaluate the offspring.
         if os.environ["ALGORITHM"] == "CPPN":
             offspring_fitnesses, offspring_behavioral_measures = evaluator.evaluate(
@@ -379,6 +386,8 @@ def run_experiment(dbengine: Engine) -> None:
                 max_parts = config.MAX_PARTS, mode_core_mult = config.MODE_CORE_MULT
                 ) for genotype in offspring_genotypes]
             )
+        else:
+            raise ValueError("ALGORITHM must be either GRN or CPPN")
 
         # Make an intermediate offspring population.
         offspring_population = Population(
