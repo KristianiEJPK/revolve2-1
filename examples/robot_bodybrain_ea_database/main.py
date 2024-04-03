@@ -31,7 +31,7 @@ from revolve2.experimentation.rng import make_rng, seed_from_time
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-
+print("Able to load modules --> DAS?")
 def select_parents(
     rng: np.random.Generator,
     population: Population,
