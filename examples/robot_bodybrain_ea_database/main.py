@@ -212,8 +212,10 @@ def run_experiment(dbengine: Engine) -> None:
     Input:
         dbengine: An openened database with matching initialize database structure.
     """
+    print("Able to start run experiment --> Test for DAS")
     logging.info("----------------")
     logging.info("Start experiment")
+    print("Able to create logger --> Test for DAS")
 
     # ---- Set up the random number generator.
     rng_seed = seed_from_time()
