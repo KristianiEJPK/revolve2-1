@@ -212,16 +212,12 @@ def run_experiment(dbengine: Engine) -> None:
     Input:
         dbengine: An openened database with matching initialize database structure.
     """
-    print("Able to start run experiment --> Test for DAS")
     logging.info("----------------")
     logging.info("Start experiment")
-    print("Able to create logger --> Test for DAS")
 
     # ---- Set up the random number generator.
     rng_seed = seed_from_time()
     rng = make_rng(rng_seed)
-
-    print("Able to create random seed --> Test for DAS")
 
     # ---- Create and save the experiment instance.
     experiment = Experiment(rng_seed = rng_seed)
@@ -230,15 +226,11 @@ def run_experiment(dbengine: Engine) -> None:
         session.add(experiment)
         session.commit()
 
-    print("Able to create database --> Test for DAS")
-
     # ---- Intialize the evaluator that will be used to evaluate robots.
     evaluator = Evaluator(headless = True, num_simulators = config.NUM_SIMULATORS,
                           terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
                           simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY, 
                           simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY)
-
-    print("Able to evaluate --> Test for DAS")
 
     # ---- CPPN innovation databases.
     # Niet nodig voor GRN???
@@ -473,18 +465,14 @@ def run_experiment(dbengine: Engine) -> None:
 def main() -> None:
     """Run the program."""
     # Set up logging.
-    print("Able to start main --> Test for DAS")
     setup_logging(file_name="log.txt")
-    print("Able to create logger --> Test for DAS")
 
     # Open the database, only if it does not already exists.
     dbengine = open_database_sqlite(
         config.DATABASE_FILE, open_method=OpenMethod.NOT_EXISTS_AND_CREATE
     )
-    print("Able to create database --> Test for DAS")
     # Create the structure of the database.
     Base.metadata.create_all(dbengine)
-    print("Able to create database structure --> Test for DAS")
 
     # Run the experiment several times.
     for _ in range(config.NUM_REPETITIONS):
@@ -492,5 +480,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    print("pre main --> Test for DAS")
     main()

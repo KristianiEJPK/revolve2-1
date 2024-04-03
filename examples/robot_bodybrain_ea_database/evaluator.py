@@ -1,5 +1,4 @@
 """Evaluator class."""
-import os
 from revolve2.ci_group import fitness_functions, terrains
 from revolve2.ci_group.morphological_measures import MorphologicalMeasures
 from revolve2.ci_group.behavioral_measures import BehavioralMeasures

@@ -1,8 +1,9 @@
 """Configuration parameters for this example."""
+import os 
 
 DATABASE_FILE = "database.sqlite"
 NUM_REPETITIONS = 20#5
-NUM_SIMULATORS = 8
+NUM_SIMULATORS = os.cpu_count()#8
 POPULATION_SIZE = 100#100#100
 OFFSPRING_SIZE = 50 # 50#50
 NUM_RANDOM_SEARCH = 50
