@@ -1,9 +1,24 @@
 """Plot fitness over generations for all experiments, averaged."""
 
-import config
+# Set algorithm, mode and file name from command line arguments.
 import os
-os.environ['ALGORITHM'] = config.ALGORITHM
+import sys
 
+algo = sys.argv[1]
+mode = sys.argv[2]
+file_name = sys.argv[3]
+assert algo in ["GRN", "CPPN"], "ALGORITHM must be either GRN or CPPN"
+assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
+assert type(file_name) == str, "FILE_NAME must be a string"
+assert file_name.endswith(".sqlite"), "FILE_NAME must end with sqlite"
+os.environ["ALGORITHM"] = algo
+os.environ["MODE"] = mode
+os.environ["DATABASE_FILE"] = file_name
+
+# Import parameters
+import config
+
+# Import other modules
 import matplotlib.pyplot as plt
 import pandas
 from experiment import Experiment
@@ -152,7 +167,7 @@ if __name__ == "__main__":
                 "balance"]
 
     # If folder does not exist, create it
-    path = f"C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\Test\\{config.ALGORITHM}\\BehavioralMeasures\\plots"
+    path = f"C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\Test\\{os.environ['ALGORITHM']}\\BehavioralMeasures\\plots"
     if not os.path.exists(path):
         os.makedirs(path)
 
