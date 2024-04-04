@@ -1,7 +1,7 @@
 import logging
 import sys
 import os
-# Set algorithm
+# Set algorithm, mode and file name from command line arguments.
 algo = sys.argv[1]
 mode = sys.argv[2]
 file_name = sys.argv[3]

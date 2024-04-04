@@ -112,6 +112,7 @@ class Evaluator:
                     behavioral_measures[-1][variable] = valuevar
               
         # ---- Calculate the fitnesses.
+        print(behavioral_measures[0]["x_distance"])
         if self.fitness_function == "xy_displacement":
             fitnesses = [
                 fitness_functions.xy_displacement(
