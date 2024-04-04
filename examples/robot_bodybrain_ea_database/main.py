@@ -510,4 +510,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # run with arguments <algo> <mode> <file_name> !!!
     main()
