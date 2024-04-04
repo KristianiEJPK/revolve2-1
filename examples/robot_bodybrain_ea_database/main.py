@@ -1,12 +1,22 @@
 import logging
-
-# Import the configuration and os.
-import config
+import sys
 import os
-
 # Set algorithm
-os.environ['ALGORITHM'] = config.ALGORITHM
+algo = sys.argv[1]
+mode = sys.argv[2]
+file_name = sys.argv[3]
+assert algo in ["GRN", "CPPN"], "ALGORITHM must be either GRN or CPPN"
+assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
+assert type(file_name) == str, "FILE_NAME must be a string"
+assert file_name.endswith(".sqlite"), "FILE_NAME must end with sqlite"
+os.environ["ALGORITHM"] = algo
+os.environ["MODE"] = mode
+os.environ["DATABASE_FILE"] = file_name
+# Set parameters
+import config
 os.environ['MAXPARTS'] = str(config.MAX_PARTS)
+
+# Get genotype module
 if os.environ["ALGORITHM"] == "CPPN":
     from genotype import Genotype
 elif os.environ["ALGORITHM"] == "GRN":
@@ -359,14 +369,14 @@ def run_experiment(dbengine: Engine) -> None:
     # Start the actual optimization process.
     logging.info("Start optimization process.")
     # Initialize random search boolean to True
-    random_search = True
+    if os.environ["MODE"] == "evolution":
+        random_search = False
+    else:
+        random_search = True
+    # Run the optimization process.
     while generation.generation_index < (config.NUM_GENERATIONS * 2): 
         # Log the generation number.
         logging.info(f"Generation {int(generation.generation_index / 2 + 1)}")
-
-        # Check if random search should be performed
-        if generation.generation_index == (config.NUM_RANDOM_SEARCH * 2):
-            random_search = False
 
         # Create offspring.
         parents = select_parents(rng, population, config.OFFSPRING_SIZE, config.NPARENTS, config.PARENT_TOURNAMENT_SIZE, random = random_search)
