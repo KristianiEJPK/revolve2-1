@@ -16,6 +16,7 @@ else:
 
 # Get other packages
 from base import Base
+import concurrent.futures
 from evaluator import Evaluator
 from experiment import Experiment
 from generation import Generation
@@ -203,6 +204,29 @@ def find_best_robot(
         key=lambda x: x.fitness,
     )
 
+def develop_robots(offspring_genotypes: list[Genotype]):
+    """Goal:
+        Develop a list of robots from a list of genotypes.
+    -------------------------------------------------------------------------------------------
+    Input:
+        offspring_genotypes: The genotypes to develop.
+    -------------------------------------------------------------------------------------------
+    Output:
+        The developed robots.
+    """
+    if config.NUM_SIMULATORS != 1:
+        with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
+                ) as executor:
+                    futures = [
+                        executor.submit(genotype.develop, 
+                                    config.CPPNBIAS, config.MAX_PARTS, config.MODE_CORE_MULT
+                                        ) for genotype in offspring_genotypes]
+
+        robots = [future.result() for future in futures]
+    else:
+        robots = [genotype.develop(config.CPPNBIAS, config.MAX_PARTS, config.MODE_CORE_MULT) for genotype in offspring_genotypes]
+
+    return robots
 
 def run_experiment(dbengine: Engine) -> None:
     """
@@ -272,11 +296,8 @@ def run_experiment(dbengine: Engine) -> None:
                 ) for genotype in initial_genotypes],
         )
     elif os.environ["ALGORITHM"] == "GRN":
-        initial_fitnesses, behavioral_measures = evaluator.evaluate(
-            [genotype.develop(include_bias = config.CPPNBIAS,
-                max_parts = config.MAX_PARTS, mode_core_mult = config.MODE_CORE_MULT
-                ) for genotype in initial_genotypes],
-        )
+        robots = develop_robots(initial_genotypes)
+        initial_fitnesses, behavioral_measures = evaluator.evaluate(robots)
     else:
         raise ValueError("ALGORITHM must be either GRN or CPPN")
 
@@ -380,10 +401,9 @@ def run_experiment(dbengine: Engine) -> None:
                 ) for genotype in offspring_genotypes]
             )
         elif os.environ["ALGORITHM"] == "GRN":
+            robots = develop_robots(offspring_genotypes)
             offspring_fitnesses, offspring_behavioral_measures = evaluator.evaluate(
-                [genotype.develop(include_bias = config.CPPNBIAS,
-                max_parts = config.MAX_PARTS, mode_core_mult = config.MODE_CORE_MULT
-                ) for genotype in offspring_genotypes]
+                robots
             )
         else:
             raise ValueError("ALGORITHM must be either GRN or CPPN")

@@ -11,8 +11,6 @@ from revolve2.modular_robot_simulation import (
 )
 from revolve2.simulators.mujoco_simulator import LocalSimulator
 
-
-
 class Evaluator:
     """Goal:
         Provides evaluation of robots."""
@@ -63,7 +61,6 @@ class Evaluator:
             self.fitness_function = fitness_function
         else:
             raise ValueError(f"Unknown fitness function: {fitness_function}")
-        
 
     def evaluate(
         self,
@@ -92,7 +89,6 @@ class Evaluator:
             scene = ModularRobotScene(terrain = self._terrain)
             scene.add_robot(robot)
             scenes.append(scene)
-
         # ---- Simulate all scenes.
         scene_states = simulate_scenes(
             simulator=self._simulator,
@@ -135,6 +131,5 @@ class Evaluator:
                 )
                 for behavioral_measure in behavioral_measures
             ]
-
-
+        
         return fitnesses, behavioral_measures
