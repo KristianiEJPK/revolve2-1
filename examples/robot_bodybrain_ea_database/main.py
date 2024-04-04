@@ -224,18 +224,39 @@ def develop_robots(offspring_genotypes: list[Genotype]):
     Output:
         The developed robots.
     """
-    if config.NUM_SIMULATORS != 1:
-        with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
-                ) as executor:
-                    futures = [
-                        executor.submit(genotype.develop, 
-                                    config.CPPNBIAS, config.MAX_PARTS, config.MODE_CORE_MULT
-                                        ) for genotype in offspring_genotypes]
+    if os.environ["ALGORITHM"] == "GRN":
+        if config.NUM_SIMULATORS != 1:
+            with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
+                    ) as executor:
+                        futures = [
+                            executor.submit(genotype.develop, 
+                                        config.CPPNBIAS, config.MAX_PARTS, config.MODE_CORE_MULT
+                                            ) for genotype in offspring_genotypes]
 
-        robots = [future.result() for future in futures]
+            robots = [future.result() for future in futures]
+        else:
+            robots = [genotype.develop(config.CPPNBIAS, config.MAX_PARTS, config.MODE_CORE_MULT) for genotype in offspring_genotypes]
+    elif os.environ["ALGORITHM"] == "CPPN":
+        if config.NUM_SIMULATORS != 1:
+            with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
+                    ) as executor:
+                        futures = [
+                            executor.submit(genotype.develop, 
+                                config.ZDIRECTION, config.CPPNBIAS,
+                                    config.CPPNCHAINLENGTH, config.CPPNEMPTY, config.MAX_PARTS, 
+                                    config.MODE_COLLISION, config.MODE_CORE_MULT, config.MODE_SLOTS4FACE, 
+                                    config.MODE_SLOTS4FACE_ALL, config.MODE_NOT_VERTICAL
+                                            ) for genotype in offspring_genotypes]
+            robots = [future.result() for future in futures]
+        else:
+            robots = [genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
+                include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
+                max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
+                mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
+                mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL
+                ) for genotype in offspring_genotypes]
     else:
-        robots = [genotype.develop(config.CPPNBIAS, config.MAX_PARTS, config.MODE_CORE_MULT) for genotype in offspring_genotypes]
-
+        raise ValueError("ALGORITHM must be either GRN or CPPN")
     return robots
 
 def run_experiment(dbengine: Engine) -> None:
@@ -296,20 +317,8 @@ def run_experiment(dbengine: Engine) -> None:
         raise ValueError("ALGORITHM must be either GRN or CPPN")
     # Evaluate the initial population.
     logging.info("Evaluating initial population.")
-    if os.environ["ALGORITHM"] == "CPPN":
-        initial_fitnesses, behavioral_measures = evaluator.evaluate(
-            [genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
-                include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
-                max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
-                mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
-                mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL
-                ) for genotype in initial_genotypes],
-        )
-    elif os.environ["ALGORITHM"] == "GRN":
-        robots = develop_robots(initial_genotypes)
-        initial_fitnesses, behavioral_measures = evaluator.evaluate(robots)
-    else:
-        raise ValueError("ALGORITHM must be either GRN or CPPN")
+    robots = develop_robots(initial_genotypes)
+    initial_fitnesses, behavioral_measures = evaluator.evaluate(robots)
 
     # Create a population of individuals, combining genotype with fitness.
     population = Population(
@@ -401,22 +410,9 @@ def run_experiment(dbengine: Engine) -> None:
         else:
             raise ValueError("ALGORITHM must be either GRN or CPPN")
         # Evaluate the offspring.
-        if os.environ["ALGORITHM"] == "CPPN":
-            offspring_fitnesses, offspring_behavioral_measures = evaluator.evaluate(
-                [genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
-                include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
-                max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
-                mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
-                mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL
-                ) for genotype in offspring_genotypes]
-            )
-        elif os.environ["ALGORITHM"] == "GRN":
-            robots = develop_robots(offspring_genotypes)
-            offspring_fitnesses, offspring_behavioral_measures = evaluator.evaluate(
-                robots
-            )
-        else:
-            raise ValueError("ALGORITHM must be either GRN or CPPN")
+        robots = develop_robots(offspring_genotypes)
+        offspring_fitnesses, offspring_behavioral_measures = evaluator.evaluate(
+            robots)
 
         # Make an intermediate offspring population.
         offspring_population = Population(
