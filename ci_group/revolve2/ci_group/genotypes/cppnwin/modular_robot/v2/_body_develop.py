@@ -196,7 +196,7 @@ def develop(
             pass
 
         # Remove module from to_explore if it has no attachment points left after current
-        if not mode_slots4face: # Or immediately if mode_slots4face is off
+        if (not mode_slots4face) and (module.module_type == "Core"): # Or immediately if mode_slots4face is off
             to_explore.remove(module)
         elif len(attachment_point_tuples) == 1:
             to_explore.remove(module)
