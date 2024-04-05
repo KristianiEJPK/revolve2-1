@@ -198,7 +198,8 @@ def develop(
         # Remove module from to_explore if it has no attachment points left after current
         if (not mode_slots4face) and (module.module_type == "Core"): # Or immediately if mode_slots4face is off
             to_explore.remove(module)
-        elif len(attachment_point_tuples) == 1:
+        elif len(attachment_point_tuples) == 1: # If only current attachment point is left
+            assert attachment_point_tuples[0] == attachment_point_tuple, "Error: The attachment point is not the same as the current attachment point."
             to_explore.remove(module)
 
         # Nothing left anymore or body collided with itself --> then stop the development
