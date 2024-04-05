@@ -46,15 +46,15 @@ class BrainCpgNetworkNeighborV1(ModularRobotBrainCpgNetworkNeighbor):
         self._genotype.BuildPhenotype(brain_net)
 
         # Get the grid and core grid position
-        self.grid, self.core_grid_position, self.id_string = body.to_grid(ActiveHingeV2, BrickV2)
+        grid, core_grid_position, id_string = body.to_grid(ActiveHingeV2, BrickV2)
         
         # Get positions of joints
         if len(active_hinges) > 0:
             positions = []
             for hinge in active_hinges:
-                position = np.where(self.grid == hinge)
+                position = np.where(grid == hinge)
                 position = np.array([position[0], position[1], position[2]]).flatten()
-                position = position - self.core_grid_position
+                position = position - core_grid_position
                 positions.append(position)
         else:
             positions = []

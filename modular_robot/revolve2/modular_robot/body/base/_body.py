@@ -27,53 +27,53 @@ class Body:
         """
         self._core = core
 
-    @classmethod
-    def grid_position(cls, module: Module) -> Vector3:
-        """
-        Goal:
-            Calculate the position of this module in a 3d grid with the core as center.
-            The distance between all modules is assumed to be one grid cell.
-            All module angles must be multiples of 90 degrees.
-            Note: raises KeyError in case an attachment point is not found.
-        -------------------------------------------------------------------------------------------
-        Input:
-            module: The module to calculate the position.
-        -------------------------------------------------------------------------------------------
-        Output:
-            The calculated position.
-        """
-        # Initialize the position.
-        position = Vector3()
+    # @classmethod
+    # def grid_position(cls, module: Module) -> Vector3:
+    #     """
+    #     Goal:
+    #         Calculate the position of this module in a 3d grid with the core as center.
+    #         The distance between all modules is assumed to be one grid cell.
+    #         All module angles must be multiples of 90 degrees.
+    #         Note: raises KeyError in case an attachment point is not found.
+    #     -------------------------------------------------------------------------------------------
+    #     Input:
+    #         module: The module to calculate the position.
+    #     -------------------------------------------------------------------------------------------
+    #     Output:
+    #         The calculated position.
+    #     """
+    #     # Initialize the position.
+    #     position = Vector3()
 
-        # Calculate the position.
-        parent = module.parent
-        child_index = module.parent_child_index
-        #last_child_index = None
-        while parent is not None and child_index is not None:
-            # Get child and check conditions.
-            child = parent.children.get(child_index)
-            assert child is not None
-            assert np.isclose(child.rotation % (math.pi / 2.0), 0.0)
+    #     # Calculate the position.
+    #     parent = module.parent
+    #     child_index = module.parent_child_index
+    #     #last_child_index = None
+    #     while parent is not None and child_index is not None:
+    #         # Get child and check conditions.
+    #         child = parent.children.get(child_index)
+    #         assert child is not None
+    #         assert np.isclose(child.rotation % (math.pi / 2.0), 0.0)
 
-            # Calculate the position.
-            position = Quaternion.from_eulers((child.rotation, 0.0, 0.0)) * position
-            position += Vector3([1, 0, 0])
+    #         # Calculate the position.
+    #         position = Quaternion.from_eulers((child.rotation, 0.0, 0.0)) * position
+    #         position += Vector3([1, 0, 0])
             
-            # Get the attachment point.
-            attachment_point = parent.attachment_points.get(child_index)
-            if attachment_point is None:
-                raise KeyError("No attachment point found at the specified location.")
-            # Adapt the position.
-            position = attachment_point.orientation * position
-            position = Vector3.round(position)
-            # Get parent
-            # if parent.parent is None:
-            #     last_child_index = deepcopy(child_index)
-            child_index = parent.parent_child_index
-            parent = parent.parent
+    #         # Get the attachment point.
+    #         attachment_point = parent.attachment_points.get(child_index)
+    #         if attachment_point is None:
+    #             raise KeyError("No attachment point found at the specified location.")
+    #         # Adapt the position.
+    #         position = attachment_point.orientation * position
+    #         position = Vector3.round(position)
+    #         # Get parent
+    #         # if parent.parent is None:
+    #         #     last_child_index = deepcopy(child_index)
+    #         child_index = parent.parent_child_index
+    #         parent = parent.parent
 
 
-        return position
+    #     return position
 
     @classmethod
     def __find_recur(cls, module: Module, module_type: Type[TModule]) -> list[TModule]:
