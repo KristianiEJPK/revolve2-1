@@ -35,7 +35,7 @@ CPPNBIAS = False # Whether BIAS is an Input for the CPPN.
 CPPNCHAINLENGTH = False # Whether CHAINLENGTH is an Input for the CPPN.
 CPPNEMPTY = False # Whether EMPTY Module is an Output for the CPPN.
 
-MAX_PARTS = 20 # Maximum number of parts in the body --> better pass as parameter???? 
+MAX_PARTS = 30 # Maximum number of parts in the body --> better pass as parameter???? 
 MODE_COLLISION = False # Whether to stop if collision occurs
 MODE_CORE_MULT = True # Whether to allow multiple core slots
 MODE_SLOTS4FACE = False # Whether multiple slots can be used for a single face for the core module
