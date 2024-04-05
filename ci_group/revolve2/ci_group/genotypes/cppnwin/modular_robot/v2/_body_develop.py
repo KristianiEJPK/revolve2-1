@@ -154,8 +154,7 @@ def develop(
         # Get random attachment points which have not been explored yet
         attachment_point_tuples = [attach for attach in attachment_point_tuples_all if attach not in explored_modules[module_id][0]]
         attachment_point_tuple = tuple(rng.choice(attachment_point_tuples))
-        explored_modules[module_id][0].append(attachment_point_tuple) # Append to explored!
-
+        
         # Check if forward direction is not vertical
         forward = __rotate(module.forward, module.up, attachment_point_tuple[1].orientation)
 
@@ -187,9 +186,12 @@ def develop(
             elif child is not None: # New module is not left as an empty cell
                 to_explore.append(child)
                 part_count += 1
+                # Append current slot
+                if attachment_point_tuple[0] not in slots2close:
+                    slots2close.append(attachment_point_tuple[0])
                 # Remove closed slots
                 for attachpointup in deepcopy(attachment_point_tuples):
-                    if (attachpointup[0] in slots2close) and (attachpointup not in explored_modules[module_id][0]):
+                    if (attachpointup[0] in slots2close):
                         explored_modules[module_id][0].append(attachpointup)
                         attachment_point_tuples.remove(attachpointup)
         else:
@@ -198,8 +200,7 @@ def develop(
         # Remove module from to_explore if it has no attachment points left after current
         if (not mode_slots4face) and (module.module_type == "Core"): # Or immediately if mode_slots4face is off
             to_explore.remove(module)
-        elif len(attachment_point_tuples) == 1: # If only current attachment point is left
-            assert attachment_point_tuples[0] == attachment_point_tuple, "Error: The attachment point is not the same as the current attachment point."
+        elif len(attachment_point_tuples) == 0: # If nothing is left
             to_explore.remove(module)
 
         # Nothing left anymore or body collided with itself --> then stop the development
@@ -258,7 +259,7 @@ def __evaluate_cppn(
         inputs.append(z)
     if include_chain_length:
         inputs.append(chain_length)
-
+    
     # Set inputs
     body_net.Input(inputs)
 
