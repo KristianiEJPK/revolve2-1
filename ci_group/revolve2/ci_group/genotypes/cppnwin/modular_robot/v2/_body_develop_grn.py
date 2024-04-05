@@ -443,13 +443,13 @@ class DevelopGRN():
                 values_at_true_indices = np.array(cell.transcription_factors[product_tfs[idx_max]])[true_indices]
                 # Max value
                 max_value_index = np.argmax(values_at_true_indices)
-                # Index of max is new slot (coordinates calculation)
+                # Index of max is new slot (coordinates calculation --> needs to adhere to front, back, left, right, etc.)
                 position_of_max_value = true_indices[max_value_index]
-                slot4coordinates = position_of_max_value # !!!
+                slot4coordinates = position_of_max_value
                 # Adapt slot for setting of children
                 if type(cell.developed_module.module) == ActiveHingeV2:
                     slot = 0
-                elif type(cell.developed_module.module) == BrickV2:
+                elif type(cell.developed_module.module) == BrickV2: # Position 3 is slot 2
                     slot = slot4coordinates - (1 * (slot4coordinates > CoreV2.BACK))
                 else: # CoreV2
                     slot = deepcopy(slot4coordinates)
