@@ -48,6 +48,7 @@ class Body:
         # Calculate the position.
         parent = module.parent
         child_index = module.parent_child_index
+        #last_child_index = None
         while parent is not None and child_index is not None:
             # Get child and check conditions.
             child = parent.children.get(child_index)
@@ -57,7 +58,7 @@ class Body:
             # Calculate the position.
             position = Quaternion.from_eulers((child.rotation, 0.0, 0.0)) * position
             position += Vector3([1, 0, 0])
-
+            
             # Get the attachment point.
             attachment_point = parent.attachment_points.get(child_index)
             if attachment_point is None:
@@ -65,9 +66,13 @@ class Body:
             # Adapt the position.
             position = attachment_point.orientation * position
             position = Vector3.round(position)
-            # ????
+            # Get parent
+            # if parent.parent is None:
+            #     last_child_index = deepcopy(child_index)
             child_index = parent.parent_child_index
             parent = parent.parent
+
+
         return position
 
     @classmethod
@@ -197,7 +202,6 @@ class _GridMaker(Generic[TModuleNP]):
             minsmaxs.append(att_arr.min(axis = 0))
             minsmaxs.append(att_arr.max(axis = 0))
         
-
         # Loop through the attachment points
         for child_index, attachment_point in module.attachment_points.items():
             # Get child

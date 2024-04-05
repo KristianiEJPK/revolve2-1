@@ -220,7 +220,6 @@ def develop(
     # plt.yticks(np.arange(0, grid.shape[1], 1))
     # plt.grid(True, which='both')
     # plt.show()
-    
     return body
 
 
@@ -417,7 +416,7 @@ def __add_child(
 
     # ---- Set the new child
     module.module_reference.set_child(child, attachment_index)
-    
+
     return __Module(
         position,
         forward,

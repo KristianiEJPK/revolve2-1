@@ -1,8 +1,10 @@
 from typing import cast
 
 import multineat
+import numpy as np
 
 from revolve2.modular_robot.body.base import ActiveHinge, Body
+from revolve2.modular_robot.body.v2 import ActiveHingeV2, BrickV2
 from revolve2.modular_robot.brain.cpg import (
     BrainCpgNetworkNeighbor as ModularRobotBrainCpgNetworkNeighbor,
 )
@@ -43,29 +45,47 @@ class BrainCpgNetworkNeighborV1(ModularRobotBrainCpgNetworkNeighbor):
         brain_net = multineat.NeuralNetwork()
         self._genotype.BuildPhenotype(brain_net)
 
+        # Get the grid and core grid position
+        self.grid, self.core_grid_position, self.id_string = body.to_grid(ActiveHingeV2, BrickV2)
+        
+        # Get positions of joints
+        if len(active_hinges) > 0:
+            positions = []
+            for hinge in active_hinges:
+                position = np.where(self.grid == hinge)
+                position = np.array([position[0], position[1], position[2]]).flatten()
+                position = position - self.core_grid_position
+                positions.append(position)
+        else:
+            positions = []
+
         # Internal weights
         if self.include_bias:
             internal_weights = [self._evaluate_network(brain_net,[1.0,
-                        float(pos.x), float(pos.y), float(pos.z), float(pos.x), float(pos.y), float(pos.z),],)
-                for pos in [body.grid_position(active_hinge) for active_hinge in active_hinges]]
+                        float(pos[0]), float(pos[1]), float(pos[2]), float(pos[0]), float(pos[1]), float(pos[2]),],)
+                for pos in positions]
         else:
             internal_weights = [self._evaluate_network(brain_net,[
-                float(pos.x), float(pos.y), float(pos.z), float(pos.x), float(pos.y), float(pos.z),],)
-                for pos in [body.grid_position(active_hinge) for active_hinge in active_hinges]]
+                float(pos[0]), float(pos[1]), float(pos[2]), float(pos[0]), float(pos[1]), float(pos[2]),],)
+                for pos in positions]
 
         # External weights
+        connecting_positions = []
+        for connection in connections:
+            idx1 = active_hinges.index(connection[0])
+            idx2 = active_hinges.index(connection[1])
+            connecting_positions.append((positions[idx1], positions[idx2]))
+
         if self.include_bias:
             external_weights = [
                 self._evaluate_network(brain_net,[1.0,
-                        float(pos1.x), float(pos1.y), float(pos1.z), float(pos2.x), float(pos2.y), float(pos2.z),],)
-                for (pos1, pos2) in [(body.grid_position(active_hinge1), body.grid_position(active_hinge2))
-                                    for (active_hinge1, active_hinge2) in connections]]
+                        float(pos1[0]), float(pos1[1]), float(pos1[2]), float(pos2[0]), float(pos2[1]), float(pos2[2]),],)
+                for (pos1, pos2) in connecting_positions]
         else:
             external_weights = [
                 self._evaluate_network(brain_net,[
-                float(pos1.x), float(pos1.y), float(pos1.z), float(pos2.x), float(pos2.y), float(pos2.z),],)
-                for (pos1, pos2) in [(body.grid_position(active_hinge1), body.grid_position(active_hinge2))
-                                    for (active_hinge1, active_hinge2) in connections]]
+                float(pos1[0]), float(pos1[1]), float(pos1[2]), float(pos2[0]), float(pos2[1]), float(pos2[2]),],)
+                for (pos1, pos2) in connecting_positions]
 
         return (internal_weights, external_weights)
 
