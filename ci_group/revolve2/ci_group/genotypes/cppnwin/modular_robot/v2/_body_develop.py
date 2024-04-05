@@ -179,9 +179,9 @@ def develop(
                                              mode_slots4face_all, bool_core, zdirection, include_bias, include_chain_length, include_empty)
 
             # Check some conditions
-            if (child == False) and (mode_collision): # If the cell is occupied
+            if (child == False) and (mode_collision): # If the cell is occupied --> dont add to explored because that is not the case in code of Karine as well
                 collision = True
-            elif child == False: # Collision mode is off
+            elif child == False: # Collision mode is off --> dont add to explored because that is not the case in code of Karine as well
                 pass
             elif child is not None: # New module is not left as an empty cell
                 to_explore.append(child)
@@ -194,7 +194,7 @@ def develop(
                     if (attachpointup[0] in slots2close):
                         explored_modules[module_id][0].append(attachpointup)
                         attachment_point_tuples.remove(attachpointup)
-        else:
+        else: #  --> dont add to explored because that is not the case in code of Karine as well
             pass
 
         # Remove module from to_explore if it has no attachment points left after current
