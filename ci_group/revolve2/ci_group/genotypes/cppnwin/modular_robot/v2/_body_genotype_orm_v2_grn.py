@@ -94,7 +94,9 @@ class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
         types_nucleotypes = 6
 
         # The first nucleotide is the concentration --> average of the parents
-        new_genotype = [(genotype1[0] + genotype2[0])/2]
+        new_genotype = []
+        for ig in range(0, 1):
+            new_genotype.append((genotype1[ig] + genotype2[ig])/2)
 
         # Get remaining nucleotides from parents
         p1 = genotype1[1:]

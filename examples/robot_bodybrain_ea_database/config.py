@@ -55,8 +55,8 @@ if os.environ["MODE"] == "random search":
 elif os.environ["MODE"] == "evolution":
     assert NUM_GENERATIONS == 150, "NUM_GENERATIONS must be 150 if MODE is evolution"
 
-assert POPULATION_SIZE == 100, "POPULATION_SIZE must be 100"
-assert OFFSPRING_SIZE == 50, "OFFSPRING_SIZE must be 50"
+# assert POPULATION_SIZE == 100, "POPULATION_SIZE must be 100"
+# assert OFFSPRING_SIZE == 50, "OFFSPRING_SIZE must be 50"
 assert NPARENTS == 2, "NPARENTS must be 2"
 assert PARENT_TOURNAMENT_SIZE == 4, "PARENT_TOURNAMENT_SIZE must be 4"
 assert SURVIVOR_TOURNAMENT_SIZE == 4, "SURVIVOR_TOURNAMENT_SIZE must be 4"

@@ -46,6 +46,21 @@ class DevelopGRN():
     ----------------------------------------------------------------------	
     """
 
+    # ---- Note
+    # I only changed the diffusion towards a more meaningful interpretation. However, 
+    # there are more things that might need change. I omitted those because it is hard to decide what to do with all parameters.
+    # This would require experimentation, and I dont have the time required for this.
+    
+    # Potential changes:
+    # * The production should be included into the matrix calculations instead of directly setting it --> self.matrices[TF][2] 
+    # * Production keeps on going after tf has been expressed with same rate --> rational?
+    # * Express promoters adds a certain amount directly, which should be included into the matrix calculations!
+    # * Amount of promoter produced by rTF is not dependent on concentration of rTF --> rational? --> tanh function?
+    # * Inter and intra diffusion rates can be set to same value --> irrational to have different values
+    # * The diffusion rates are now the same for all modules, but could be different between modules
+    # * Capacity is now set to 1, but could be different between modules
+
+
     def __init__(self, max_modules, mode_core_mult, genotype):
         # Initialize
         self.max_modules = max_modules # Maximum number of modules
@@ -62,10 +77,9 @@ class DevelopGRN():
         #     self.grid[max_modules + 1:max_modules + 4, max_modules + 1:max_modules + 4] = 1
         #     self.grid_origin = (max_modules + 2, max_modules + 2)
 
-
         # Internal variables
         self.phenotype_body = None # Phenotype body
-        self.queried_substrate = {} # Dictionary to store the queried substrate
+        self.queried_substrate = {} # Dictionary to store the queried substrates
         self.cells = [] # List to store the cells
         self.promotors = [] # List to store the promotors
         self.quantity_modules = 0
@@ -80,39 +94,43 @@ class DevelopGRN():
 
         # Number of nucleotides, number of diffusion sites, kind of transcription factors and number of regulatory transcription factors
         self.types_nucleotypes = 6 # Number of types of nucleotypes
-        self.diffusion_sites_qt = 4 # Number of diffusion sites (probably front, back, left, right)?
-        self.diffusion_sites_qt2 = {CoreV2: 4, ActiveHingeV2: 4, BrickV2: 4}
+        self.diffusion_sites_qt = {CoreV2: 4, ActiveHingeV2: 4, BrickV2: 4} # Number of diffusion sites (probably front, back, left, right)?
         self.structural_trs = len(['brick', 'joint', 'rotation'])
         self.regulatory_tfs = 2
 
-        # Parameters
+        # Thresholds
         self.promoter_threshold = 0.8 # Promoter threshold
-        self.concentration_decay = 0.5#0.005 # Concentration decay
+        self.concentration_threshold = self.genotype[0] # Concentration threshold
 
+        # Decay Factors ---> I would change this to a multiplication factor
+        self.concentration_decay = 0.995 # Concentration decay
         self.decay_factor = {}
         self.decay_factor[CoreV2] = self.concentration_decay
         self.decay_factor[ActiveHingeV2] = self.concentration_decay
         self.decay_factor[BrickV2] = self.concentration_decay
 
-        self.concentration_threshold = self.genotype[0] # Concentration threshold
+        # Scaling factor
         self.increase_scaling = 100
-        self.intra_diffusion_rate = self.concentration_decay
-        
+
+        # Diffusion rates --> I would keep intra en inter the same, but maybe different between modules
+        self.intra_diffusion_rate = 0.5
         self.intra_diffusion_rate2 = {}
-        self.intra_diffusion_rate2[CoreV2] = [self.intra_diffusion_rate] * self.diffusion_sites_qt
-        self.intra_diffusion_rate2[ActiveHingeV2] = [self.intra_diffusion_rate] * self.diffusion_sites_qt
-        self.intra_diffusion_rate2[BrickV2] = [self.intra_diffusion_rate] * self.diffusion_sites_qt
+        self.intra_diffusion_rate2[CoreV2] = [self.intra_diffusion_rate] * self.diffusion_sites_qt[CoreV2]
+        self.intra_diffusion_rate2[ActiveHingeV2] = [self.intra_diffusion_rate] * self.diffusion_sites_qt[ActiveHingeV2]
+        self.intra_diffusion_rate2[BrickV2] = [self.intra_diffusion_rate] * self.diffusion_sites_qt[BrickV2]
 
-        self.inter_diffusion_rate = self.intra_diffusion_rate
-
+        self.inter_diffusion_rate = 0.5
         self.inter_diffusion_rate2 = {}
-        self.inter_diffusion_rate2[CoreV2] = [self.inter_diffusion_rate] * self.diffusion_sites_qt
-        self.inter_diffusion_rate2[ActiveHingeV2] = [self.inter_diffusion_rate] * self.diffusion_sites_qt
-        self.inter_diffusion_rate2[BrickV2] = [self.inter_diffusion_rate] * self.diffusion_sites_qt
+        self.inter_diffusion_rate2[CoreV2] = [self.inter_diffusion_rate] * self.diffusion_sites_qt[CoreV2]
+        self.inter_diffusion_rate2[ActiveHingeV2] = [self.inter_diffusion_rate] * self.diffusion_sites_qt[ActiveHingeV2]
+        self.inter_diffusion_rate2[BrickV2] = [self.inter_diffusion_rate] * self.diffusion_sites_qt[BrickV2]
 
-        self.dev_steps = 100 # Number of development steps
+        # Number of development steps and time step
+        self.dev_steps = 100
+        self.dt = 1
 
-        self.capacity = {CoreV2: 5, ActiveHingeV2: 1, BrickV2: 3}
+        # Capacity
+        self.capacity = {CoreV2: 1, ActiveHingeV2: 1, BrickV2: 1}
 
         # Adapt genotype
         self.genotype = self.genotype[1:]
@@ -126,7 +144,7 @@ class DevelopGRN():
             the regulatory transcription (rTFs) and transcription factors (Tfs).
             ---> A, B and b, decay, x_{t}, which are part of the equation:
                 ##
-                Ax_{t+1} = decay * (Bx_{t} + b)
+                Ax_{t+1} = (Bx_{t} + b) - decay
                 ##
                 where x represent the concentrations of the transcription factors and t
                 indicates the timestep.
@@ -145,7 +163,7 @@ class DevelopGRN():
                 """
         # --- Initialize
         # Get maximal possible number of nodes
-        max_diffusion_sites_qt = max(self.diffusion_sites_qt2.values())
+        max_diffusion_sites_qt = max(self.diffusion_sites_qt.values())
         nnodes = max_diffusion_sites_qt * self.max_modules
 
         # Get diagonal
@@ -158,23 +176,20 @@ class DevelopGRN():
         # For all possible regulatory transcription factors and transcription factors
         for tf in range(0, self.structural_trs + self.regulatory_tfs):
             # A, B, b, decay, x
-            A = sp.csr_matrix(np.zeros((nnodes, nnodes)))
-            B = sp.csr_matrix(np.zeros((nnodes, nnodes)))
-            b = sp.csr_matrix(np.zeros((nnodes, 1)))
-            decay = sp.csr_matrix(np.zeros((nnodes, 1)))
-            x = sp.csr_matrix(np.zeros((nnodes, 1)))
+            A = sp.lil_matrix(np.zeros((nnodes, nnodes)))
+            B = sp.lil_matrix(np.zeros((nnodes, nnodes)))
+            b = sp.lil_matrix(np.zeros((nnodes, 1)))
+            decay = sp.lil_matrix(np.zeros((nnodes, 1)))
+            x = sp.lil_matrix(np.zeros((nnodes, 1)))
 
             # Initialize diagonal to be 1 --> later substituted, but otherwise singular matrix!
-            A[diagonal, diagonal] = 1
-            B[diagonal, diagonal] = 1
+            A[diagonal, diagonal] = 1 / self.dt
+            B[diagonal, diagonal] = 1 / self.dt
 
             # Add to matrices
             self.matrices["TF" + str(tf + 1)] = [A, B, b, decay, x]
             
-        # ---- Set diagonal for the first module: CoreV2 --> ergens anders neerzetten!
-        self.set_diagonal(np.arange(0, self.diffusion_sites_qt2[CoreV2], dtype = np.int32), CoreV2)
-
-    def initial_concentrations(self, indices, TF, amount):
+    def add2concentrations(self, indices, TF, amount):
         """Goal:
             Sets the concentrations of the transcription factors.
         -----------------------------------------------------------------------------------------------
@@ -185,8 +200,11 @@ class DevelopGRN():
         -----------------------------------------------------------------------------------------------
         Output:
             The updated matrix."""
-        assert sum(self.matrices[TF][4][indices, 0]) == 0, "Initial concentrations should be zero"
-        self.matrices[TF][4][indices, 0] = amount
+        for index in indices:
+            if self.matrices[TF][4][index, 0] != 0:
+                self.matrices[TF][4][index, 0] += amount
+            else:
+                self.matrices[TF][4][index, 0] = amount
     
     def set_diagonal(self, diagonal, type_new):
         """Goal:
@@ -198,8 +216,8 @@ class DevelopGRN():
         Output:
             The updated matrix."""
         for TF in self.matrices.keys():
-            self.matrices[TF][0][diagonal, diagonal] = self.capacity[type_new]
-            self.matrices[TF][1][diagonal, diagonal] = self.capacity[type_new]
+            self.matrices[TF][0][diagonal, diagonal] = self.capacity[type_new] / self.dt
+            self.matrices[TF][1][diagonal, diagonal] = self.capacity[type_new] / self.dt
 
     def set_intradiffusion(self, new_cell):
         """Goal:
@@ -294,7 +312,7 @@ class DevelopGRN():
                 self.matrices[TF][1][new_cell.indices[CoreV2.BACK], source_cell.indices[slot]] = 0.5 * avg_diffusion
 
 
-    def set_production(self, indices, TF, amount):
+    def set_production(self, index, TF, amount):
         """Goal:
             Sets the production of the transcription factors.
         -----------------------------------------------------------------------------------------------
@@ -305,11 +323,10 @@ class DevelopGRN():
         -----------------------------------------------------------------------------------------------
         Output:
             The updated matrix."""
-        for index in indices:
-            if self.matrices[TF][2][index, 0] != 0:
-                self.matrices[TF][2][index, 0] += amount
-            else:
-                self.matrices[TF][2][index, 0] = amount
+        if self.matrices[TF][2][index, 0] != 0:
+            self.matrices[TF][2][index, 0] += amount
+        else:
+            self.matrices[TF][2][index, 0] = amount
     
     def set_decay(self, new_cell):
         """Goal:
@@ -333,7 +350,7 @@ class DevelopGRN():
         for TF in self.matrices.keys():
             # B * x_{i}
             v = np.dot(self.matrices[TF][1], self.matrices[TF][4])
-            # A, decay * (Bx_{i} + b)
+            # A, (Bx_{i} + b) - decay
             self.matrices[TF][4] = sp.linalg.spsolve(self.matrices[TF][0], 
                                             self.matrices[TF][3].multiply(v + self.matrices[TF][2]))
             
@@ -408,7 +425,7 @@ class DevelopGRN():
                             transcription_factor_label = 'TF' + str(len(limits))
             
                     # Converts diffusion sites values into labels
-                    range_size = 1 / self.diffusion_sites_qt
+                    range_size = 1 / self.diffusion_sites_qt[CoreV2]
                     limits = [round(limit / 100, 2) for limit in range(0, 1 * 100, int(range_size * 100))]
                     for idx in range(0, len(limits) - 1):
                         if limits[idx+1] > diffusion_site >= limits[idx]:
@@ -448,51 +465,48 @@ class DevelopGRN():
             The tf injected is regulatory tf of the first gene in the genetic string.
             The amount injected is the minimum for the regulatory tf to regulate its regulated product.
             """
-        # Initialize
+        # ---- Initialize
         self.developed_nodes = 0
         first_gene_idx = 0
-        tf_label_idx = 0
-        min_value_idx = 1
+        tf_label_idx = self.regulatory_transcription_factor_idx
+        min_value_idx = self.regulatory_min_idx
 
-        # Get label of regulatory transcription factor of first gene
+        # ---- Get label of regulatory transcription factor of first gene
         mother_tf_label = self.promotors[first_gene_idx][tf_label_idx]
-        # Get minimum amount of regulatory tf required to express the gene
+        # ---- Get minimum amount of regulatory tf required to express the gene
         mother_tf_injection = float(self.promotors[first_gene_idx][min_value_idx])
 
-        # Create first cell
+        # ---- Create first cell
         first_cell = Cell()
-
         # Get indices
-        first_cell.indices = np.arange(0, self.diffusion_sites_qt, dtype = np.int32)
-
-        # Get initial concentration
-        cinit = mother_tf_injection / self.diffusion_sites_qt
-
+        first_cell.indices = np.arange(0, self.diffusion_sites_qt[CoreV2], dtype = np.int32)
         # Distributes minimum injection among the diffusion sites
-        first_cell.transcription_factors[mother_tf_label] = \
-            [cinit] * self.diffusion_sites_qt
-        
-        self.initial_concentrations(first_cell.indices, mother_tf_label, cinit)
-        
-        # # Expresses promoters of first cell and updates transcription factors
-        # first_cell = self.express_promoters(first_cell)
-        
+        cinit = mother_tf_injection / self.diffusion_sites_qt[CoreV2]
+        # Set initial concentrations
+        self.add2concentrations(first_cell.indices, mother_tf_label, cinit)
+        first_cell.transcription_factors[mother_tf_label] = self.matrices[mother_tf_label][4][first_cell.indices].toarray().flatten()
+        ## Expresses promoters of first cell and updates transcription factors
+        #first_cell = self.express_promoters(first_cell, CoreV2)
+
         # Append first cell
         self.cells.append(first_cell)
 
-        # Develop a module
+        # ---- Develop a module
         first_cell.developed_module = self.place_head(first_cell)
 
+        # ---- Set matrix components
+        # Set diagonal for the first module
+        self.set_diagonal(first_cell.indices, CoreV2)
         # Set intradiffusion and decay
         self.set_intradiffusion(first_cell)
         self.set_decay(first_cell)
 
-        # Increase number of developed nodes
+        # --- Increase number of developed nodes
         self.developed_nodes += len(first_cell.indices)
 
         return self
 
-    def express_promoters(self, new_cell):
+    def express_promoters(self, new_cell, celltype):
         """Goal:
             Expresses the promoters of a cell and updates the transcription factors.
         -----------------------------------------------------------------------------------------------
@@ -519,15 +533,14 @@ class DevelopGRN():
                 summed_regulatory = sum(new_cell.transcription_factors[rTF])
                 if (summed_regulatory >= regulatory_min_val) and (summed_regulatory <= regulatory_max_val):
                     # Update or add transcription factor
-                    # !!!!
                     if TF in new_cell.transcription_factors.keys():
                         new_cell.transcription_factors[TF][ds] += amount
-
                     else:
-                        new_cell.transcription_factors[TF] = [0] * self.diffusion_sites_qt
+                        new_cell.transcription_factors[TF] = [0] * self.diffusion_sites_qt[celltype]
                         new_cell.transcription_factors[TF][ds] = amount
-                    # !!!!
-                    self.set_production(new_cell.indices, TF, amount )
+                    # Increase the amount of the transcription factor
+                    #self.add2concentrations(np.array([new_cell.indices[ds]]), TF, amount)
+                    self.set_production(new_cell.indices[ds], TF, amount)
         
         return new_cell
     
@@ -556,40 +569,37 @@ class DevelopGRN():
                             orientation, (0, 0), CoreV2.FRONT, new_cell, 
                             [None, None, None, None], None, None, 
                             forwards, Vector3([0, 0, 1]), faces)
-
+        
         return core_module
 
     def growth(self):
         """Goal:
             Grows the embryo."""
         # For all development steps
-        for t in range(0, self.dev_steps):
-            # Develops cells in order of age --> oldest first
+        for _ in range(0, self.dev_steps):
+            # ---- For all tfs set production to 0
+            for TF in self.matrices.keys():
+                self.matrices[TF][2] *= 0
+
+            # ---- For all cells express the promotors again
             for idxc in range(0, len(self.cells)):
                 cell = self.cells[idxc]
-                # For all transcription factors express
-                self.express_promoters(cell)
+                self.express_promoters(cell, type(cell.developed_module.module))
 
-            # Calculate concentrations
-            reps = 1
-            t2 = time.time()
+            # ---- Perform intra and inter diffusion
+            self.get_concentrations()
 
-
-            #print("Time to calculate concentrations: ", time.time() - t2)
-
-            for rep in range(0, reps):  
-                self.get_concentrations()
-
-
-            t3 = time.time()
+            # ---- Get concentrations after diffusion and place modules
             for cell in self.cells: 
                 # Get concentrations   
                 for TF in self.matrices.keys():
-                    cell.transcription_factors[TF] = self.matrices[TF][4][cell.indices].toarray().flatten()
+                    tfconcentrations = self.matrices[TF][4][cell.indices].toarray().flatten()
+                    if (TF in cell.transcription_factors.keys()) or (tfconcentrations > 0).any():
+                        cell.transcription_factors[TF] = tfconcentrations
                 # Place module
-                self.place_module(cell)  
-            #print("Time to place module: ", time.time() - t3) 
-            # Early stop
+                self.place_module(cell)
+            
+            # ---- Early stop?
             if self.quantity_modules >= self.max_modules:
                 break
             
@@ -607,69 +617,6 @@ class DevelopGRN():
         
         return cell
 
-    def intra_diffusion(self, tf, cell):
-        """Goal:
-            Performs intra diffusion of a transcription factor in a cell."""
-        # For each site: first right then left
-        for ds in range(0, self.diffusion_sites_qt):
-            # Get left and right diffusion sites
-            ds_left = ds - 1 if ds - 1 >= 0 else self.diffusion_sites_qt - 1
-            ds_right = ds + 1 if ds + 1 <= self.diffusion_sites_qt - 1 else 0
-
-            # Diffuse to right
-            if cell.transcription_factors[tf][ds] >= self.intra_diffusion_rate:
-                cell.transcription_factors[tf][ds] -= self.intra_diffusion_rate
-                cell.transcription_factors[tf][ds_right] += self.intra_diffusion_rate
-            # Diffuse to left
-            if cell.transcription_factors[tf][ds] >= self.intra_diffusion_rate:
-                cell.transcription_factors[tf][ds] -= self.intra_diffusion_rate
-                cell.transcription_factors[tf][ds_left] += self.intra_diffusion_rate
-    
-    def inter_diffusion(self, tf, cell):
-        """Goal: Performs inter diffusion of a transcription factor between cells."""
-        # For each diffusion site
-        for ds in range(0, self.diffusion_sites_qt):
-            # If diffusion site is the back (non-core) and the developed cell is a hinge or a brick
-            if (ds == CoreV2.BACK) and \
-                    (type(cell.developed_module.module) == ActiveHingeV2 or type(cell.developed_module.module) == BrickV2):
-                # If transcription factor concentration is equal or greater than the inter diffusion rate
-                if cell.transcription_factors[tf][CoreV2.BACK] >= self.inter_diffusion_rate:
-                    cell.transcription_factors[tf][CoreV2.BACK] -= self.inter_diffusion_rate
-
-                    # Update or add transcription factor
-                    if cell.developed_module._parent.cell.transcription_factors.get(tf):
-                        cell.developed_module._parent.cell.transcription_factors[tf][cell.developed_module.direction_from_parent] += self.inter_diffusion_rate
-                    else:
-                        cell.developed_module._parent.cell.transcription_factors[tf] = [0] * self.diffusion_sites_qt
-                        cell.developed_module._parent.cell.transcription_factors[tf][cell.developed_module.direction_from_parent] += self.inter_diffusion_rate
-
-            # If diffusion site is not the back and the developed cell is a hinge --> also share from other sides without slots
-            elif (type(cell.developed_module.module) == ActiveHingeV2) and \
-                    ds in [CoreV2.LEFT, CoreV2.FRONT, CoreV2.RIGHT]:
-                # If the front side is not None and transcription factor concentration is equal or greater than the inter diffusion rate
-                if (cell.developed_module.children[CoreV2.FRONT] is not None) \
-                        and (cell.transcription_factors[tf][ds] >= self.inter_diffusion_rate):
-                    cell.transcription_factors[tf][ds] -= self.inter_diffusion_rate
-
-                    # Update or add transcription factor
-                    if cell.developed_module.children[CoreV2.FRONT].cell.transcription_factors.get(tf):
-                        cell.developed_module.children[CoreV2.FRONT].cell.transcription_factors[tf][CoreV2.BACK] += self.inter_diffusion_rate
-                    else:
-                        cell.developed_module.children[CoreV2.FRONT].cell.transcription_factors[tf] = [0] * self.diffusion_sites_qt
-                        cell.developed_module.children[CoreV2.FRONT].cell.transcription_factors[tf][CoreV2.BACK] += self.inter_diffusion_rate
-            else:
-                # If a developed module and the transcription factor concentration is equal or greater than the inter diffusion rate
-                if (cell.developed_module.children[ds] is not None) \
-                    and (cell.transcription_factors[tf][ds] >= self.inter_diffusion_rate):
-                    cell.transcription_factors[tf][ds] -= self.inter_diffusion_rate
-
-                    # Update or add transcription factor
-                    if cell.developed_module.children[ds].cell.transcription_factors.get(tf):
-                        cell.developed_module.children[ds].cell.transcription_factors[tf][CoreV2.BACK] += self.inter_diffusion_rate
-                    else:
-                        cell.developed_module.children[ds].cell.transcription_factors[tf] = [0] * self.diffusion_sites_qt
-                        cell.developed_module.children[ds].cell.transcription_factors[tf][CoreV2.BACK] += self.inter_diffusion_rate
-    
     def place_module(self, cell):
         """Goal:
             Places a module in the embryo."""
@@ -783,14 +730,6 @@ class DevelopGRN():
                     # elif type(module2add.module) == CoreV2:
                     #     self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 1
 
-
-    def decay(self, tf, cell):
-        """Goal:
-            Decays the amount of a transcription factor in a cell."""
-        # Decay at all sites
-        for ds in range(0, self.diffusion_sites_qt):
-            cell.transcription_factors[tf][ds] = \
-                max(0, cell.transcription_factors[tf][ds] - self.concentration_decay)
     
     def new_cell(self, source_cell, new_module, slot):
         """Goal:
@@ -799,36 +738,37 @@ class DevelopGRN():
         new_cell = Cell()
 
         # Set matrix indices of new cell
-        ul = self.developed_nodes + self.diffusion_sites_qt
+        ul = self.developed_nodes + self.diffusion_sites_qt[type(new_module.module)]
         new_cell.indices = np.arange(self.developed_nodes, ul, dtype = np.int32)
         self.developed_nodes += len(new_cell.indices)
         self.set_diagonal(new_cell.indices, type(new_module.module))
 
-        # Share concentrations at diffusion sites
-        for tf in source_cell.transcription_factors:
-            # Initialize transcription factor
-            new_cell.transcription_factors[tf] = [0, 0, 0, 0]
+        # # Share concentrations at diffusion sites
+        # for tf in source_cell.transcription_factors:
+        #     # Initialize transcription factor
+        #     new_cell.transcription_factors[tf] = [0, 0, 0, 0]
 
-            # In the case of joint, also shares concentrations of sites without slot
-            if type(source_cell.developed_module.module) == ActiveHingeV2:
-                sites = [CoreV2.LEFT, CoreV2.FRONT, CoreV2.RIGHT]
-                for s in sites:
-                    if source_cell.transcription_factors[tf][s] > 0:
-                        # Get half of the concentration
-                        half_concentration = source_cell.transcription_factors[tf][s] / 2
-                        # Share half of the concentration
-                        source_cell.transcription_factors[tf][s] = half_concentration
-                        new_cell.transcription_factors[tf][CoreV2.BACK] += half_concentration
-                # Divide by the number of sites
-                new_cell.transcription_factors[tf][CoreV2.BACK] /= len(sites)
-            else:
-                if source_cell.transcription_factors[tf][slot] > 0:
-                    half_concentration = source_cell.transcription_factors[tf][slot] / 2
-                    source_cell.transcription_factors[tf][slot] = half_concentration
-                    new_cell.transcription_factors[tf][CoreV2.BACK] = half_concentration
+        #     # In the case of joint, also shares concentrations of sites without slot
+        #     if type(source_cell.developed_module.module) == ActiveHingeV2:
+        #         sites = [CoreV2.LEFT, CoreV2.FRONT, CoreV2.RIGHT]
+        #         for s in sites:
+        #             if source_cell.transcription_factors[tf][s] > 0:
+        #                 # Get half of the concentration
+        #                 half_concentration = source_cell.transcription_factors[tf][s] / 2
+        #                 # Share half of the concentration
+        #                 source_cell.transcription_factors[tf][s] = half_concentration
+        #                 new_cell.transcription_factors[tf][CoreV2.BACK] += half_concentration
+        #         # Divide by the number of sites
+        #         new_cell.transcription_factors[tf][CoreV2.BACK] /= len(sites)
+        #     else:
+        #         if source_cell.transcription_factors[tf][slot] > 0:
+        #             half_concentration = source_cell.transcription_factors[tf][slot] / 2
+        #             source_cell.transcription_factors[tf][slot] = half_concentration
+        #             new_cell.transcription_factors[tf][CoreV2.BACK] = half_concentration
+            
+        # # Express promoters of new cell and updates transcription factors
+        # self.express_promoters(new_cell, type(new_module.module))
 
-        3# Express promoters of new cell and updates transcription factors
-        #self.express_promoters(new_cell)
         # Append new cell
         self.cells.append(new_cell)
         # Set new module
