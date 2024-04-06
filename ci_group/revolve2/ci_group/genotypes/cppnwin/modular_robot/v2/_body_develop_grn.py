@@ -7,6 +7,7 @@ from pyrr import Vector3, Quaternion
 from revolve2.modular_robot.body import Module
 from revolve2.modular_robot.body.v2 import ActiveHingeV2, BodyV2, BrickV2, CoreV2
 import time
+import scipy.sparse as sp
 
 @dataclass
 class ModuleGRN:
@@ -125,44 +126,47 @@ class DevelopGRN():
             Creates matrices for the regulatory transcription factors and transcription factors.
                 A, B and b, decay, x_{i} in Ax_{i+1} = decay * (Bx_{i} + b) where x are the concentrations"""
         # Get number of nodes
-        nnodes = 4 #self.diffusion_sites_qt * self.max_modules
+        nnodes = self.diffusion_sites_qt * self.max_modules
         # Initialize matrices --> submatrices because of quadratic increase of the number of nodes
         self.matrices = {}
         # For all possible regulatory transcription factors and transcription factors
         for tf in range(0, self.structural_trs + self.regulatory_tfs):
             # A, B and b
-            self.matrices["TF" + str(tf + 1)] = [np.zeros((nnodes, nnodes)), 
-                                                 np.zeros((nnodes, nnodes)), np.zeros((nnodes, 1)),
-                                                 np.zeros((nnodes, 1)), np.zeros((nnodes, 1))]
-        
-        # Set diagonal
-        self.set_diagonal()
-
-    def append2matrix(self, nnew, type_new):
-        cnodes = self.matrices["TF1"][0].shape[0]
-        for TF in self.matrices.keys():
-            diag = np.arange(cnodes, cnodes + nnew, dtype = np.int32)
-            newA = np.zeros((cnodes + nnew, cnodes + nnew))
-            newA[:cnodes, :cnodes] = self.matrices[TF][0]
-            newA[diag, diag] = self.capacity[type_new]
-            self.matrices[TF][0] = newA
-
-            newB = np.zeros((cnodes + nnew, cnodes + nnew))
-            newB[:cnodes, :cnodes] = self.matrices[TF][1]
-            newB[diag, diag] = self.capacity[type_new]
-            self.matrices[TF][1] = newB
-
-            newb = np.zeros((cnodes + nnew, 1))
-            newb[:cnodes, 0] = self.matrices[TF][2].flatten()
-            self.matrices[TF][2] = newb
+            A = sp.csr_matrix(np.zeros((nnodes, nnodes)))
+            B = sp.csr_matrix(np.zeros((nnodes, nnodes)))
+            b = sp.csr_matrix(np.zeros((nnodes, 1)))
+            decay = sp.csr_matrix(np.zeros((nnodes, 1)))
+            x = sp.csr_matrix(np.zeros((nnodes, 1)))
+            self.matrices["TF" + str(tf + 1)] = [A, B, b, decay, x]
             
-            newd = np.zeros((cnodes + nnew, 1))
-            newd[:cnodes, 0] = self.matrices[TF][3].flatten()
-            self.matrices[TF][3] = newd
+        # Set diagonal
+        self.set_diagonal(np.arange(0, self.diffusion_sites_qt, dtype = np.int32), CoreV2)
 
-            newx = np.zeros((cnodes + nnew, 1))
-            newx[:cnodes, 0] = self.matrices[TF][4].flatten()
-            self.matrices[TF][4] = newx
+    # def append2matrix(self, nnew, type_new):
+    #     cnodes = self.matrices["TF1"][0].shape[0]
+    #     for TF in self.matrices.keys():
+    #         diag = np.arange(cnodes, cnodes + nnew, dtype = np.int32)
+    #         newA = np.zeros((cnodes + nnew, cnodes + nnew))
+    #         newA[:cnodes, :cnodes] = self.matrices[TF][0]
+    #         newA[diag, diag] = self.capacity[type_new]
+    #         self.matrices[TF][0] = newA
+
+    #         newB = np.zeros((cnodes + nnew, cnodes + nnew))
+    #         newB[:cnodes, :cnodes] = self.matrices[TF][1]
+    #         newB[diag, diag] = self.capacity[type_new]
+    #         self.matrices[TF][1] = newB
+
+    #         newb = np.zeros((cnodes + nnew, 1))
+    #         newb[:cnodes, 0] = self.matrices[TF][2].flatten()
+    #         self.matrices[TF][2] = newb
+            
+    #         newd = np.zeros((cnodes + nnew, 1))
+    #         newd[:cnodes, 0] = self.matrices[TF][3].flatten()
+    #         self.matrices[TF][3] = newd
+
+    #         newx = np.zeros((cnodes + nnew, 1))
+    #         newx[:cnodes, 0] = self.matrices[TF][4].flatten()
+    #         self.matrices[TF][4] = newx
 
     def initial_concentrations(self, indices, TF, amount):
         """Goal:
@@ -175,9 +179,13 @@ class DevelopGRN():
         -----------------------------------------------------------------------------------------------
         Output:
             The updated matrix."""
-        self.matrices[TF][4][indices] += amount
+        for index in indices:
+            if self.matrices[TF][4][index, 0] != 0:
+                self.matrices[TF][4][index, 0] += amount
+            else:
+                self.matrices[TF][4][index, 0] = amount
     
-    def set_diagonal(self):
+    def set_diagonal(self, diagonal, type_new):
         """Goal:
             Sets the diagonal of the matrix.
         -----------------------------------------------------------------------------------------------
@@ -186,10 +194,9 @@ class DevelopGRN():
         -----------------------------------------------------------------------------------------------
         Output:
             The updated matrix."""
-        diagonal = np.arange(0, self.matrices["TF1"][0].shape[0], dtype = np.int32)
         for TF in self.matrices.keys():
-            self.matrices[TF][0][diagonal, diagonal] = self.capacity[CoreV2]
-            self.matrices[TF][1][diagonal, diagonal] = self.capacity[CoreV2]
+            self.matrices[TF][0][diagonal, diagonal] = self.capacity[type_new]
+            self.matrices[TF][1][diagonal, diagonal] = self.capacity[type_new]
 
     def set_intradiffusion(self, new_cell):
         """Goal:
@@ -210,17 +217,29 @@ class DevelopGRN():
                 # --- Forward diffusion
                 # A
                 self.matrices[TF][0][new_cell.indices[ds], new_cell.indices[ds]] += 0.5 * avg_diffusion
-                self.matrices[TF][0][new_cell.indices[ds], new_cell.indices[dsnext]] -= 0.5 * avg_diffusion
+                if self.matrices[TF][0][new_cell.indices[ds], new_cell.indices[dsnext]] != 0:
+                    self.matrices[TF][0][new_cell.indices[ds], new_cell.indices[dsnext]] -= 0.5 * avg_diffusion
+                else:
+                    self.matrices[TF][0][new_cell.indices[ds], new_cell.indices[dsnext]] = -0.5 * avg_diffusion
                 # B
                 self.matrices[TF][1][new_cell.indices[ds], new_cell.indices[ds]] -= 0.5 * avg_diffusion
-                self.matrices[TF][1][new_cell.indices[ds], new_cell.indices[dsnext]] += 0.5 * avg_diffusion
+                if self.matrices[TF][1][new_cell.indices[ds], new_cell.indices[dsnext]] != 0:
+                    self.matrices[TF][1][new_cell.indices[ds], new_cell.indices[dsnext]] += 0.5 * avg_diffusion
+                else:
+                    self.matrices[TF][1][new_cell.indices[ds], new_cell.indices[dsnext]] = 0.5 * avg_diffusion
                 # --- For next one back
                 # A
                 self.matrices[TF][0][new_cell.indices[dsnext], new_cell.indices[dsnext]] += 0.5 * avg_diffusion
-                self.matrices[TF][0][new_cell.indices[dsnext], new_cell.indices[ds]] -= 0.5 * avg_diffusion
+                if self.matrices[TF][0][new_cell.indices[dsnext], new_cell.indices[ds]] != 0:
+                    self.matrices[TF][0][new_cell.indices[dsnext], new_cell.indices[ds]] -= 0.5 * avg_diffusion
+                else:
+                    self.matrices[TF][0][new_cell.indices[dsnext], new_cell.indices[ds]] = -0.5 * avg_diffusion
                 # B
                 self.matrices[TF][1][new_cell.indices[dsnext], new_cell.indices[dsnext]] -= 0.5 * avg_diffusion
-                self.matrices[TF][1][new_cell.indices[dsnext], new_cell.indices[ds]] += 0.5 * avg_diffusion
+                if self.matrices[TF][1][new_cell.indices[dsnext], new_cell.indices[ds]] != 0:
+                    self.matrices[TF][1][new_cell.indices[dsnext], new_cell.indices[ds]] += 0.5 * avg_diffusion
+                else:
+                    self.matrices[TF][1][new_cell.indices[dsnext], new_cell.indices[ds]] = 0.5 * avg_diffusion
 
     def set_interdiffusion(self, source_cell, new_cell, slot):
         """Goal:
@@ -246,17 +265,30 @@ class DevelopGRN():
             # Forward diffusion
             # A
             self.matrices[TF][0][source_cell.indices[slot], source_cell.indices[slot]] += 0.5 * avg_diffusion
-            self.matrices[TF][0][source_cell.indices[slot], new_cell.indices[CoreV2.BACK]] -= 0.5 * avg_diffusion
+            if self.matrices[TF][0][source_cell.indices[slot], new_cell.indices[CoreV2.BACK]] != 0:
+                self.matrices[TF][0][source_cell.indices[slot], new_cell.indices[CoreV2.BACK]] -= 0.5 * avg_diffusion
+            else:
+                self.matrices[TF][0][source_cell.indices[slot], new_cell.indices[CoreV2.BACK]] = -0.5 * avg_diffusion
+            
             # B
             self.matrices[TF][1][source_cell.indices[slot], source_cell.indices[slot]] -= 0.5 * avg_diffusion
-            self.matrices[TF][1][source_cell.indices[slot], new_cell.indices[CoreV2.BACK]] += 0.5 * avg_diffusion
+            if self.matrices[TF][1][source_cell.indices[slot], new_cell.indices[CoreV2.BACK]] != 0:
+                self.matrices[TF][1][source_cell.indices[slot], new_cell.indices[CoreV2.BACK]] += 0.5 * avg_diffusion
+            else:
+                self.matrices[TF][1][source_cell.indices[slot], new_cell.indices[CoreV2.BACK]] = 0.5 * avg_diffusion
             # For next one back
             # A
             self.matrices[TF][0][new_cell.indices[CoreV2.BACK], new_cell.indices[CoreV2.BACK]] += 0.5 * avg_diffusion
-            self.matrices[TF][0][new_cell.indices[CoreV2.BACK], source_cell.indices[slot]] -= 0.5 * avg_diffusion
+            if self.matrices[TF][0][new_cell.indices[CoreV2.BACK], source_cell.indices[slot]] != 0:
+                self.matrices[TF][0][new_cell.indices[CoreV2.BACK], source_cell.indices[slot]] -= 0.5 * avg_diffusion
+            else:
+                self.matrices[TF][0][new_cell.indices[CoreV2.BACK], source_cell.indices[slot]] = -0.5 * avg_diffusion
             # B
             self.matrices[TF][1][new_cell.indices[CoreV2.BACK], new_cell.indices[CoreV2.BACK]] -= 0.5 * avg_diffusion
-            self.matrices[TF][1][new_cell.indices[CoreV2.BACK], source_cell.indices[slot]] += 0.5 * avg_diffusion
+            if self.matrices[TF][1][new_cell.indices[CoreV2.BACK], source_cell.indices[slot]] != 0:
+                self.matrices[TF][1][new_cell.indices[CoreV2.BACK], source_cell.indices[slot]] += 0.5 * avg_diffusion
+            else:
+                self.matrices[TF][1][new_cell.indices[CoreV2.BACK], source_cell.indices[slot]] = 0.5 * avg_diffusion
 
 
     def set_production(self, indices, TF, amount):
@@ -270,7 +302,11 @@ class DevelopGRN():
         -----------------------------------------------------------------------------------------------
         Output:
             The updated matrix."""
-        self.matrices[TF][2][indices] += amount
+        for index in indices:
+            if self.matrices[TF][2][index, 0] != 0:
+                self.matrices[TF][2][index, 0] += amount
+            else:
+                self.matrices[TF][2][index, 0] = amount
     
     def set_decay(self, new_cell):
         """Goal:
@@ -282,15 +318,19 @@ class DevelopGRN():
         Output:
             The updated matrix."""
         for TF in self.matrices.keys():
-            self.matrices[TF][3][new_cell.indices] += self.decay_factor[type(new_cell.developed_module.module)]
-
+            for idx in new_cell.indices:
+                if self.matrices[TF][3][idx] != 0:
+                    self.matrices[TF][3][idx] += self.decay_factor[type(new_cell.developed_module.module)]
+                else:
+                    self.matrices[TF][3][idx] = self.decay_factor[type(new_cell.developed_module.module)]
+            
     def get_concentrations(self):
         """Goal:
             Get the concentrations at t + 1 of the transcription factors."""
         for TF in self.matrices.keys():
             v = np.dot(self.matrices[TF][1], self.matrices[TF][4])
-            self.matrices[TF][4] = np.linalg.solve(self.matrices[TF][0], 
-                                            (self.matrices[TF][3] * v) + self.matrices[TF][2])
+            self.matrices[TF][4] = sp.linalg.spsolve(self.matrices[TF][0], 
+                                            self.matrices[TF][3].multiply(v) + self.matrices[TF][2])
 
     def develop(self) -> BodyV2:
         """Goal:
@@ -526,6 +566,7 @@ class DevelopGRN():
             # Calculate concentrations
             reps = 1
             t2 = time.time()
+
             for rep in range(0, reps):  
                 self.get_concentrations()
             print("Time to calculate concentrations: ", time.time() - t2)
@@ -750,7 +791,7 @@ class DevelopGRN():
         # Set matrix indices of new cell
         ul = self.developed_nodes + self.diffusion_sites_qt
         new_cell.indices = np.arange(self.developed_nodes, ul, dtype = np.int32)
-        self.append2matrix(len(new_cell.indices), type(new_module.module))
+        self.set_diagonal(new_cell.indices, type(new_module.module))
 
         # Share concentrations at diffusion sites
         for tf in source_cell.transcription_factors:
