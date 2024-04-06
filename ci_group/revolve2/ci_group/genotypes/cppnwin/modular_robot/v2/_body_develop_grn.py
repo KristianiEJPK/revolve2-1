@@ -81,6 +81,7 @@ class DevelopGRN():
         # Number of nucleotides, number of diffusion sites, kind of transcription factors and number of regulatory transcription factors
         self.types_nucleotypes = 6 # Number of types of nucleotypes
         self.diffusion_sites_qt = 4 # Number of diffusion sites (probably front, back, left, right)?
+        self.diffusion_sites_qt2 = {CoreV2: 4, ActiveHingeV2: 4, BrickV2: 4}
         self.structural_trs = len(['brick', 'joint', 'rotation'])
         self.regulatory_tfs = 2
 
@@ -92,8 +93,6 @@ class DevelopGRN():
         self.decay_factor[CoreV2] = self.concentration_decay
         self.decay_factor[ActiveHingeV2] = self.concentration_decay
         self.decay_factor[BrickV2] = self.concentration_decay
-
-
 
         self.concentration_threshold = self.genotype[0] # Concentration threshold
         self.increase_scaling = 100
@@ -111,9 +110,9 @@ class DevelopGRN():
         self.inter_diffusion_rate2[ActiveHingeV2] = [self.inter_diffusion_rate] * self.diffusion_sites_qt
         self.inter_diffusion_rate2[BrickV2] = [self.inter_diffusion_rate] * self.diffusion_sites_qt
 
-        self.dev_steps = 20 # Number of development steps
+        self.dev_steps = 100 # Number of development steps
 
-        self.capacity = {CoreV2: 10, ActiveHingeV2: 10, BrickV2: 10}
+        self.capacity = {CoreV2: 5, ActiveHingeV2: 1, BrickV2: 3}
 
         # Adapt genotype
         self.genotype = self.genotype[1:]
@@ -123,50 +122,57 @@ class DevelopGRN():
 
     def create_matrices(self):
         """Goal:
-            Creates matrices for the regulatory transcription factors and transcription factors.
-                A, B and b, decay, x_{i} in Ax_{i+1} = decay * (Bx_{i} + b) where x are the concentrations"""
-        # Get number of nodes
-        nnodes = self.diffusion_sites_qt * self.max_modules
-        # Initialize matrices --> submatrices because of quadratic increase of the number of nodes
+            Creates matrices required to get the concentrations of 
+            the regulatory transcription (rTFs) and transcription factors (Tfs).
+            ---> A, B and b, decay, x_{t}, which are part of the equation:
+                ##
+                Ax_{t+1} = decay * (Bx_{t} + b)
+                ##
+                where x represent the concentrations of the transcription factors and t
+                indicates the timestep.
+           
+           !!! Note: 
+                The matrices are created for each transcription factor because the matrix size increases
+                quadratically with the number of nodes. 
+                !!!
+        -----------------------------------------------------------------------------------------------
+        Input:
+            diffusion_sites_qt2: The number of diffusion sites for each module.
+            max_modules: The maximal number of modules.
+        -----------------------------------------------------------------------------------------------
+        Output:
+            The matrices: {TF: [A, B, b, decay, x]}.
+                """
+        # --- Initialize
+        # Get maximal possible number of nodes
+        max_diffusion_sites_qt = max(self.diffusion_sites_qt2.values())
+        nnodes = max_diffusion_sites_qt * self.max_modules
+
+        # Get diagonal
+        diagonal = np.arange(0, nnodes, dtype = np.int32)
+        
+        # Matrices
         self.matrices = {}
+
+        # ---- Create matrices
         # For all possible regulatory transcription factors and transcription factors
         for tf in range(0, self.structural_trs + self.regulatory_tfs):
-            # A, B and b
+            # A, B, b, decay, x
             A = sp.csr_matrix(np.zeros((nnodes, nnodes)))
             B = sp.csr_matrix(np.zeros((nnodes, nnodes)))
             b = sp.csr_matrix(np.zeros((nnodes, 1)))
             decay = sp.csr_matrix(np.zeros((nnodes, 1)))
             x = sp.csr_matrix(np.zeros((nnodes, 1)))
+
+            # Initialize diagonal to be 1 --> later substituted, but otherwise singular matrix!
+            A[diagonal, diagonal] = 1
+            B[diagonal, diagonal] = 1
+
+            # Add to matrices
             self.matrices["TF" + str(tf + 1)] = [A, B, b, decay, x]
             
-        # Set diagonal
-        self.set_diagonal(np.arange(0, self.diffusion_sites_qt, dtype = np.int32), CoreV2)
-
-    # def append2matrix(self, nnew, type_new):
-    #     cnodes = self.matrices["TF1"][0].shape[0]
-    #     for TF in self.matrices.keys():
-    #         diag = np.arange(cnodes, cnodes + nnew, dtype = np.int32)
-    #         newA = np.zeros((cnodes + nnew, cnodes + nnew))
-    #         newA[:cnodes, :cnodes] = self.matrices[TF][0]
-    #         newA[diag, diag] = self.capacity[type_new]
-    #         self.matrices[TF][0] = newA
-
-    #         newB = np.zeros((cnodes + nnew, cnodes + nnew))
-    #         newB[:cnodes, :cnodes] = self.matrices[TF][1]
-    #         newB[diag, diag] = self.capacity[type_new]
-    #         self.matrices[TF][1] = newB
-
-    #         newb = np.zeros((cnodes + nnew, 1))
-    #         newb[:cnodes, 0] = self.matrices[TF][2].flatten()
-    #         self.matrices[TF][2] = newb
-            
-    #         newd = np.zeros((cnodes + nnew, 1))
-    #         newd[:cnodes, 0] = self.matrices[TF][3].flatten()
-    #         self.matrices[TF][3] = newd
-
-    #         newx = np.zeros((cnodes + nnew, 1))
-    #         newx[:cnodes, 0] = self.matrices[TF][4].flatten()
-    #         self.matrices[TF][4] = newx
+        # ---- Set diagonal for the first module: CoreV2 --> ergens anders neerzetten!
+        self.set_diagonal(np.arange(0, self.diffusion_sites_qt2[CoreV2], dtype = np.int32), CoreV2)
 
     def initial_concentrations(self, indices, TF, amount):
         """Goal:
@@ -179,11 +185,8 @@ class DevelopGRN():
         -----------------------------------------------------------------------------------------------
         Output:
             The updated matrix."""
-        for index in indices:
-            if self.matrices[TF][4][index, 0] != 0:
-                self.matrices[TF][4][index, 0] += amount
-            else:
-                self.matrices[TF][4][index, 0] = amount
+        assert sum(self.matrices[TF][4][indices, 0]) == 0, "Initial concentrations should be zero"
+        self.matrices[TF][4][indices, 0] = amount
     
     def set_diagonal(self, diagonal, type_new):
         """Goal:
@@ -328,9 +331,13 @@ class DevelopGRN():
         """Goal:
             Get the concentrations at t + 1 of the transcription factors."""
         for TF in self.matrices.keys():
+            # B * x_{i}
             v = np.dot(self.matrices[TF][1], self.matrices[TF][4])
+            # A, decay * (Bx_{i} + b)
             self.matrices[TF][4] = sp.linalg.spsolve(self.matrices[TF][0], 
-                                            self.matrices[TF][3].multiply(v) + self.matrices[TF][2])
+                                            self.matrices[TF][3].multiply(v + self.matrices[TF][2]))
+            
+            self.matrices[TF][4] = sp.csr_matrix(self.matrices[TF][4].reshape(-1, 1))
 
     def develop(self) -> BodyV2:
         """Goal:
@@ -567,18 +574,21 @@ class DevelopGRN():
             reps = 1
             t2 = time.time()
 
+
+            #print("Time to calculate concentrations: ", time.time() - t2)
+
             for rep in range(0, reps):  
                 self.get_concentrations()
-            print("Time to calculate concentrations: ", time.time() - t2)
+
 
             t3 = time.time()
             for cell in self.cells: 
                 # Get concentrations   
                 for TF in self.matrices.keys():
-                    cell.transcription_factors[TF] = self.matrices[TF][4][cell.indices].flatten()
+                    cell.transcription_factors[TF] = self.matrices[TF][4][cell.indices].toarray().flatten()
                 # Place module
                 self.place_module(cell)  
-            print("Time to place module: ", time.time() - t3) 
+            #print("Time to place module: ", time.time() - t3) 
             # Early stop
             if self.quantity_modules >= self.max_modules:
                 break
@@ -791,6 +801,7 @@ class DevelopGRN():
         # Set matrix indices of new cell
         ul = self.developed_nodes + self.diffusion_sites_qt
         new_cell.indices = np.arange(self.developed_nodes, ul, dtype = np.int32)
+        self.developed_nodes += len(new_cell.indices)
         self.set_diagonal(new_cell.indices, type(new_module.module))
 
         # Share concentrations at diffusion sites
