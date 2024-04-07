@@ -78,7 +78,7 @@ nrows = len(rows)
 print(f"Number of rows: {nrows}")
 
 # Get morphologies
-for row in rows:
+for row in rows[0:1]:
     irow = rows.index(row)
     print(f"Processing row {irow + 1} of {nrows}")
     df.append(get_morphologies(irow, row, nrows, config))
@@ -88,11 +88,11 @@ df = pd.DataFrame(df)
 
 
 # Create directory
-path = f"C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\Test\\{os.environ['ALGORITHM']}\\Morphologies"
-if not os.path.exists(path):
-    os.makedirs(path)
+#path = f"C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\Test\\{os.environ['ALGORITHM']}\\Morphologies"
+# if not os.path.exists(path):
+#     os.makedirs(path)
 uuid = uuid.uuid4()
-df.to_csv(path + f"\\morphological_measures_experiment_{uuid}.csv", index = False)
+df.to_csv(f"morphological_measures_experiment_{uuid}.csv", index = False)
 # # # Get max and mean fitness per experiment per generation
 # # agg_per_experiment_per_generation = (
 # #     df.groupby(["experiment_id", "generation_index"])
