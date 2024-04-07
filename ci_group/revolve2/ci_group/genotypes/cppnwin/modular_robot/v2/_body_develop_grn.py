@@ -316,6 +316,14 @@ class DevelopGRN():
                 # Decay transcription factors
                 for tf in cell.transcription_factors:
                     self.decay(tf, cell)
+                
+                # Early stopping
+                if self.quantity_modules >= self.max_modules:
+                    break 
+            # Early stopping
+            if self.quantity_modules >= self.max_modules:
+                break
+
         return self
 
     def increase(self, tf, cell):
