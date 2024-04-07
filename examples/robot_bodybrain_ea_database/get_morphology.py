@@ -71,7 +71,7 @@ def main():
     dbengine = open_database_sqlite(config.DATABASE_FILE, open_method=OpenMethod.OPEN_IF_EXISTS)
 
     # Get pandas data
-    rows = select_data(dbengine)[0:10]
+    rows = select_data(dbengine)
     nrows = len(rows)
     print(f"Number of rows: {nrows}")
 
