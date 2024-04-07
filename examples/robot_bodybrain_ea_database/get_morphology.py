@@ -78,7 +78,7 @@ nrows = len(rows)
 print(f"Number of rows: {nrows}")
 
 # Get morphologies
-for row in rows[0:1]:
+for row in rows:
     irow = rows.index(row)
     print(f"Processing row {irow + 1} of {nrows}")
     df.append(get_morphologies(irow, row, nrows, config))
