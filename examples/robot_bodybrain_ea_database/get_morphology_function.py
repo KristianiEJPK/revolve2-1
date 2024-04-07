@@ -3,7 +3,8 @@ import numpy as np
 import os
 from revolve2.ci_group.morphological_measures import MorphologicalMeasures
 
-def get_morphologies(irow, row, nrows, config):
+def get_morphologies(row, ZDIRECTION, CPPNBIAS, CPPNCHAINLENGTH, CPPNEMPTY, MAX_PARTS, MODE_COLLISION, MODE_CORE_MULT, MODE_SLOTS4FACE, 
+                     MODE_SLOTS4FACE_ALL, MODE_NOT_VERTICAL):
     # Get body
     genotype = row[0]
     experiment_id = row[1]
@@ -12,18 +13,18 @@ def get_morphologies(irow, row, nrows, config):
 
     # Develop body
     if os.environ["ALGORITHM"] == "CPPN":
-        modular_robot = genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
-                include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
-                max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
-                mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
-                mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL)
+        modular_robot = genotype.develop(zdirection = ZDIRECTION, include_bias = CPPNBIAS,
+                include_chain_length = CPPNCHAINLENGTH, include_empty = CPPNEMPTY,
+                max_parts = MAX_PARTS, mode_collision = MODE_COLLISION,
+                mode_core_mult = MODE_CORE_MULT, mode_slots4face = MODE_SLOTS4FACE,
+                mode_slots4face_all = MODE_SLOTS4FACE_ALL, mode_not_vertical = MODE_NOT_VERTICAL)
     elif os.environ["ALGORITHM"] == "GRN":
-        modular_robot = genotype.develop(include_bias = config.CPPNBIAS, max_parts = config.MAX_PARTS, mode_core_mult = config.MODE_CORE_MULT)
+        modular_robot = genotype.develop(include_bias = CPPNBIAS, max_parts = MAX_PARTS, mode_core_mult = MODE_CORE_MULT)
     else:
         raise ValueError("ALGORITHM must be either GRN or CPPN")
 
     # ---- Get morphological measures
-    morphology = MorphologicalMeasures(body = modular_robot.body, brain = np.nan, max_modules = config.MAX_PARTS)
+    morphology = MorphologicalMeasures(body = modular_robot.body, brain = np.nan, max_modules = MAX_PARTS)
     
     id_string = morphology.id_string
 
@@ -67,4 +68,5 @@ def get_morphologies(irow, row, nrows, config):
                             
                                     "coverage": coverage, "branching": branching, "surface_area": surface_area,
                                     "id_string": id_string, "experiment_id": experiment_id, "generation_index": generation_index, "individual_index": individual_index}
+    
     return dict

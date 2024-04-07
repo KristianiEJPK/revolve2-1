@@ -38,9 +38,6 @@ from sqlalchemy import select
 from revolve2.experimentation.database import OpenMethod, open_database_sqlite
 from revolve2.experimentation.logging import setup_logging
 
-import uuid
-
-
 def select_data(dbengine) -> pd.DataFrame:
     """Goal:
         Select the data of the column
@@ -63,36 +60,45 @@ def select_data(dbengine) -> pd.DataFrame:
 
     return rows
 
-# Setup logging
-setup_logging()
+def main():
+    # Setup logging
+    setup_logging()
 
-# Initialize dataframe
-df = []
+    # Initialize dataframe
+    df = []
 
-# Open database
-dbengine = open_database_sqlite(config.DATABASE_FILE, open_method=OpenMethod.OPEN_IF_EXISTS)
+    # Open database
+    dbengine = open_database_sqlite(config.DATABASE_FILE, open_method=OpenMethod.OPEN_IF_EXISTS)
 
-# Get pandas data
-rows = select_data(dbengine)
-nrows = len(rows)
-print(f"Number of rows: {nrows}")
+    # Get pandas data
+    rows = select_data(dbengine)[0:10]
+    nrows = len(rows)
+    print(f"Number of rows: {nrows}")
 
-# Get morphologies
-for row in rows:
-    irow = rows.index(row)
-    print(f"Processing row {irow + 1} of {nrows}")
-    df.append(get_morphologies(irow, row, nrows, config))
+    # Get morphologies
 
-# Convert to dataframe
-df = pd.DataFrame(df)
+    with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
+                ) as executor:
+                    futures = [
+                        executor.submit(get_morphologies, row, config.ZDIRECTION,
+                                        config.CPPNBIAS, config.CPPNCHAINLENGTH, config.CPPNEMPTY,
+                                        config.MAX_PARTS, config.MODE_COLLISION, config.MODE_CORE_MULT,
+                                        config.MODE_SLOTS4FACE, config.MODE_SLOTS4FACE_ALL,
+                                        config.MODE_NOT_VERTICAL) for row in rows]
+                     
+    dicts = [future.result() for future in futures]
+    
+    # Convert to dataframe
+    df = pd.DataFrame(dicts)
 
 
-# Create directory
-#path = f"C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\Test\\{os.environ['ALGORITHM']}\\Morphologies"
-# if not os.path.exists(path):
-#     os.makedirs(path)
-uuid = uuid.uuid4()
-df.to_csv(f"morphological_measures_experiment_{uuid}.csv", index = False)
+    # Create directory
+    #path = f"C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\Test\\{os.environ['ALGORITHM']}\\Morphologies"
+    # if not os.path.exists(path):
+    #     os.makedirs(path)
+    import uuid
+    uuid = uuid.uuid4()
+    df.to_csv(f"morphological_measures_experiment_{uuid}.csv", index = False)
 # # # Get max and mean fitness per experiment per generation
 # # agg_per_experiment_per_generation = (
 # #     df.groupby(["experiment_id", "generation_index"])
@@ -107,3 +113,6 @@ df.to_csv(f"morphological_measures_experiment_{uuid}.csv", index = False)
 # #     f"max_{column}",
 # #     f"mean_{column}",
 # # ]
+
+if __name__ == "__main__":
+    main()
