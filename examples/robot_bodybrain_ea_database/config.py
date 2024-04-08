@@ -53,7 +53,7 @@ assert SIMULATION_TIME == 30, "SIMULATION_TIME must be 30"
 if os.environ["MODE"] == "random search":
     assert NUM_GENERATIONS == 50, "NUM_GENERATIONS must be 50 if MODE is random search"
 elif os.environ["MODE"] == "evolution":
-    assert NUM_GENERATIONS == 300, "NUM_GENERATIONS must be 150 if MODE is evolution"
+    assert NUM_GENERATIONS == 600, "NUM_GENERATIONS must be 150 if MODE is evolution"
 
 assert POPULATION_SIZE == 100, "POPULATION_SIZE must be 100"
 assert OFFSPRING_SIZE == 50, "OFFSPRING_SIZE must be 50"
