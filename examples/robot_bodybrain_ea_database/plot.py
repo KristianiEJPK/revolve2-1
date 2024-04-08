@@ -6,7 +6,9 @@ import sys
 
 algo = sys.argv[1]
 mode = sys.argv[2]
-file_name = sys.argv[3]
+file_name = "nan.sqlite"
+folder_path = sys.argv[3]
+
 assert algo in ["GRN", "CPPN"], "ALGORITHM must be either GRN or CPPN"
 assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
 assert type(file_name) == str, "FILE_NAME must be a string"
@@ -20,7 +22,7 @@ import config
 
 # Import other modules
 import matplotlib.pyplot as plt
-import pandas
+import pandas as pd
 from experiment import Experiment
 from generation import Generation
 from individual import Individual
@@ -36,16 +38,26 @@ def main(column, path) -> None:
     """Run the program."""
     setup_logging()
 
-    # Open database
-    dbengine = open_database_sqlite(config.DATABASE_FILE, open_method=OpenMethod.OPEN_IF_EXISTS)
+    df = pd.DataFrame([])
+    n_exp = 0
+    for file in os.listdir(folder_path):
+        if file.endswith(".sqlite"):
+            print(file)
+            # Open database
+            dbengine = open_database_sqlite(folder_path + "\\" + file, open_method=OpenMethod.OPEN_IF_EXISTS)
 
-    # Get pandas data
-    df = select_data(dbengine, column)
+            # Get pandas data
+            df_sub = select_data(dbengine, column)
+            df_sub["experiment_id"] = ((df_sub["experiment_id"] - df_sub["experiment_id"].min()) + n_exp).astype(int).values
+            n_exp = df_sub["experiment_id"].max() + 1
+
+            # Concat data
+            df = pd.concat([df, df_sub], axis = 0)
 
     # Select even generations
     first_generation = df.loc[df["generation_index"] == 0, :]
     df = df.loc[(df.loc[:, "generation_index"] % 2) == 0, :]
-    df = pandas.concat([first_generation, df])
+    df = pd.concat([first_generation, df])
     df["generation_index"] = (df.loc[:, "generation_index"] / 2).astype(int).values
     
 
@@ -122,7 +134,7 @@ def main(column, path) -> None:
     #plt.show()
 
 
-def select_data(dbengine, column: str) -> pandas.DataFrame:
+def select_data(dbengine, column: str) -> pd.DataFrame:
     """Goal:
         Select the data of the column
     -------------------------------------------------------------
@@ -132,7 +144,7 @@ def select_data(dbengine, column: str) -> pandas.DataFrame:
     --------------------------------------------------------------
     Output:
         df: pd.Dataframe"""
-    df = pandas.read_sql(
+    df = pd.read_sql(
         select(Experiment.id.label("experiment_id"), Generation.generation_index, getattr(Individual, column),)
         .join_from(Experiment, Generation, Experiment.id == Generation.experiment_id)
         .join_from(Generation, Population, Generation.population_id == Population.id)

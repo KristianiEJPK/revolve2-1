@@ -54,7 +54,6 @@ def main() -> None:
             .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
             .order_by(Individual.fitness.desc()).limit(1000) #Individual.population_id.desc()
         ).fetchall() #.one()
-        #assert row is not None
         
     for row in rows[10:301]:
         genotype = row[0]

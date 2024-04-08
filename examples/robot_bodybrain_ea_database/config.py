@@ -9,7 +9,7 @@ OFFSPRING_SIZE = 50
 if os.environ["MODE"] == "random search":
     NUM_GENERATIONS = 50
 elif os.environ["MODE"] == "evolution":
-    NUM_GENERATIONS = 300
+    NUM_GENERATIONS = 600
 else:
     raise ValueError("MODE must be either random search or evolution")
 
