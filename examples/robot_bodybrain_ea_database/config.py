@@ -4,8 +4,8 @@ import os
 DATABASE_FILE = os.environ["DATABASE_FILE"]
 NUM_REPETITIONS = 20 #20#5
 NUM_SIMULATORS = os.cpu_count()
-POPULATION_SIZE = 100
-OFFSPRING_SIZE = 50
+POPULATION_SIZE = 10
+OFFSPRING_SIZE = 5
 if os.environ["MODE"] == "random search":
     NUM_GENERATIONS = 50
 elif os.environ["MODE"] == "evolution":
