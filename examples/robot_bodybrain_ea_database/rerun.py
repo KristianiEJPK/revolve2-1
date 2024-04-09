@@ -55,7 +55,7 @@ def main() -> None:
             .order_by(Individual.fitness.desc()).limit(1000) #Individual.population_id.desc()
         ).fetchall() #.one()
         
-    for row in rows[10:301]:
+    for row in rows[30:301]:
         genotype = row[0]
         fitness = row[1]
         energy_used = row[2]

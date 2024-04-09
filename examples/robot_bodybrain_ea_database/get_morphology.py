@@ -96,9 +96,10 @@ def main():
     #path = f"C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\Test\\{os.environ['ALGORITHM']}\\Morphologies"
     # if not os.path.exists(path):
     #     os.makedirs(path)
-    import uuid
-    uuid = uuid.uuid4()
-    df.to_csv(f"morphological_measures_experiment_{uuid}.csv", index = False)
+    # import uuid
+    # uuid = uuid.uuid4()
+    #df.to_csv(f"morphological_measures_experiment_{uuid}.csv", index = False)
+    df.to_csv(f"morphological_measures_experiment_{file_name.split('.')[0]}.csv", index = False)
 # # # Get max and mean fitness per experiment per generation
 # # agg_per_experiment_per_generation = (
 # #     df.groupby(["experiment_id", "generation_index"])
