@@ -42,14 +42,14 @@ MODE_SLOTS4FACE = False # Whether multiple slots can be used for a single face f
 MODE_SLOTS4FACE_ALL = False # Whether slots can be set for all 9 attachments, or only 3, 4, 5
 MODE_NOT_VERTICAL = True # Whether to disable vertical expansion of the body
 
-SIMULATION_TIME = 2#30
+SIMULATION_TIME = 30
 SAMPLING_FREQUENCY = 5
 SIMULATION_TIMESTEP = 0.001
 CONTROL_FREQUENCY = 20
 
 
 # Assertions
-#assert SIMULATION_TIME == 30, "SIMULATION_TIME must be 30"
+assert SIMULATION_TIME == 30, "SIMULATION_TIME must be 30"
 if os.environ["MODE"] == "random search":
     assert NUM_GENERATIONS == 50, "NUM_GENERATIONS must be 50 if MODE is random search"
 elif os.environ["MODE"] == "evolution":

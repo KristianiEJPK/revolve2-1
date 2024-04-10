@@ -34,7 +34,6 @@ else:
 # Import other modules
 from evaluator import Evaluator
 from individual import Individual
-from pyvirtualdisplay import Display
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -45,10 +44,6 @@ from revolve2.experimentation.logging import setup_logging
 def main() -> None:
     """Perform the rerun."""
     setup_logging()
-
-    # Start the display.
-    display = Display(visible = False)
-    display.start()
 
     # Load the best individual from the database.
     dbengine = open_database_sqlite(
@@ -99,8 +94,6 @@ def main() -> None:
         fitnesses, behavioral_measures = evaluator.evaluate([modular_robot])
         logging.info(f"Fitness Measured: {fitnesses[0]}")
         print("-----------------------------------------------")
-
-        display.stop()
     
 if __name__ == "__main__":
     # run with arguments <algo> <mode> <file_name> !!!
