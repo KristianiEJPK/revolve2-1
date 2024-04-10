@@ -3,6 +3,7 @@ from revolve2.ci_group import fitness_functions, terrains
 from revolve2.ci_group.morphological_measures import MorphologicalMeasures
 from revolve2.ci_group.behavioral_measures import BehavioralMeasures
 from revolve2.simulation.simulator import BatchParameters
+from revolve2.simulation.simulator import RecordSettings
 from revolve2.modular_robot import ModularRobot
 from revolve2.modular_robot_simulation import (
     ModularRobotScene,
@@ -27,7 +28,8 @@ class Evaluator:
         simulation_time: int,
         sampling_frequency: float,
         simulation_timestep: float,
-        control_frequency: float,
+        control_frequency: float, record: bool = False,
+        video_path: str = None
     ) -> None:
         """
         Goal:
@@ -47,6 +49,8 @@ class Evaluator:
         self.sampling_frequency = sampling_frequency
         self.simulation_timestep = simulation_timestep
         self.control_frequency = control_frequency
+        self.record = record
+        self.video_path = video_path
 
         # ---- Set the terrain.
         if terrain == "flat":
@@ -81,8 +85,12 @@ class Evaluator:
             simulation_time = self.simulation_time,
             sampling_frequency = self.sampling_frequency,
             simulation_timestep = self.simulation_timestep,
-            control_frequency = self.control_frequency,)
+            control_frequency = self.control_frequency)
         
+        # ---- Create record settings.
+        if self.record:
+            record_settings = RecordSettings(video_directory = self.video_path)
+        else: pass
         # ---- Create the scenes.
         scenes = []
         for robot in robots:
@@ -90,11 +98,18 @@ class Evaluator:
             scene.add_robot(robot)
             scenes.append(scene)
         # ---- Simulate all scenes.
-        scene_states = simulate_scenes(
-            simulator=self._simulator,
-            batch_parameters = batch_params,
-            scenes=scenes,
-        )
+        if not self.record:
+            scene_states = simulate_scenes(
+                simulator=self._simulator,
+                batch_parameters = batch_params,
+                scenes=scenes
+            )
+        else:
+            scene_states = simulate_scenes(
+                simulator=self._simulator,
+                batch_parameters = batch_params,
+                scenes=scenes, record_settings=record_settings
+            )
 
 
         # ---- Get Morphological Measures

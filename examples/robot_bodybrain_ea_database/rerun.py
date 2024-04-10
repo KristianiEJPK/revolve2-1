@@ -8,6 +8,8 @@ import sys
 algo = sys.argv[1]
 mode = sys.argv[2]
 file_name = sys.argv[3]
+headless = sys.argv[4]
+assert headless in ["True", "False"], "HEADLESS must be either True or False"
 assert algo in ["GRN", "CPPN"], "ALGORITHM must be either GRN or CPPN"
 assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
 assert type(file_name) == str, "FILE_NAME must be a string"
@@ -15,6 +17,7 @@ assert file_name.endswith(".sqlite"), "FILE_NAME must end with sqlite"
 os.environ["ALGORITHM"] = algo
 os.environ["MODE"] = mode
 os.environ["DATABASE_FILE"] = file_name
+os.environ["HEADLESS"] = headless
 
 # Import parameters
 import config
@@ -50,17 +53,18 @@ def main() -> None:
     with Session(dbengine) as ses:
         rows = ses.execute(
             select(Genotype, Individual.fitness, Individual.energy_used, Individual.efficiency,
-                   Individual.x_distance,)
+                   Individual.x_distance, Individual.y_distance)
             .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
             .order_by(Individual.fitness.desc()).limit(1000) #Individual.population_id.desc()
         ).fetchall() #.one()
         
-    for row in rows[0:301]:
+    for irow, row in enumerate(rows[0:301]):
         genotype = row[0]
         fitness = row[1]
         energy_used = row[2]
         efficiency = row[3]
         x_distance = row[4]
+        y_distance = row[5]
 
         if os.environ["ALGORITHM"] == "CPPN":
             modular_robot = genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
@@ -76,12 +80,15 @@ def main() -> None:
         logging.info(f"Energy used: {energy_used}")
         logging.info(f"Efficiency: {efficiency}")
         logging.info(f"X distance: {x_distance}")
+        logging.info(f"Y distance: {y_distance}")
 
 
         # Create the evaluator.
-        evaluator = Evaluator(headless = True, num_simulators = 1, terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
+        headless = os.environ["HEADLESS"] == "True"
+        evaluator = Evaluator(headless = headless, num_simulators = 1, terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
                               simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY,
-                              simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY)
+                              simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY,
+                              record = not headless, video_path = f"\\MuJoCo_videos\\MuJoCo_{irow}")
 
         # Show the robot.
         fitnesses, behavioral_measures = evaluator.evaluate([modular_robot])
