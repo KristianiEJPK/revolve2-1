@@ -55,7 +55,7 @@ def main() -> None:
             .order_by(Individual.fitness.desc()).limit(1000) #Individual.population_id.desc()
         ).fetchall() #.one()
         
-    for row in rows[30:301]:
+    for row in rows[0:301]:
         genotype = row[0]
         fitness = row[1]
         energy_used = row[2]
@@ -79,7 +79,7 @@ def main() -> None:
 
 
         # Create the evaluator.
-        evaluator = Evaluator(headless = False, num_simulators = 1, terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
+        evaluator = Evaluator(headless = True, num_simulators = 1, terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
                               simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY,
                               simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY)
 
