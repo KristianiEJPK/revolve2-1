@@ -535,8 +535,6 @@ def main() -> None:
     setup_logging(file_name="log.txt")
 
     # Open the database
-    print(os.environ["elaborate"])
-    print(bool(os.environ["elaborate"]))
     if os.environ["elaborate"] == "False":
         # Only if it does not already exists.
         dbengine = open_database_sqlite(
