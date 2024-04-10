@@ -85,8 +85,8 @@ def main() -> None:
 
         # Show the robot.
         fitnesses, behavioral_measures = evaluator.evaluate([modular_robot])
-        print(fitnesses)
-
+        logging.info(f"Fitness Measured: {fitnesses[0]}")
+        print("-----------------------------------------------")
     
 if __name__ == "__main__":
     # run with arguments <algo> <mode> <file_name> !!!
