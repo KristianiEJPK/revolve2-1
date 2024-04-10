@@ -88,7 +88,7 @@ def main() -> None:
         evaluator = Evaluator(headless = headless, num_simulators = 1, terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
                               simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY,
                               simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY,
-                              record = not headless, video_path = os.getcwd() + f"\\MuJoCo_videos\\MuJoCo_{irow}")
+                              record = not headless, video_path = os.getcwd() + f"/MuJoCo_videos/MuJoCo_{irow}")
 
         # Show the robot.
         fitnesses, behavioral_measures = evaluator.evaluate([modular_robot])
