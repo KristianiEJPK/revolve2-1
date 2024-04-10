@@ -39,6 +39,8 @@ class Generation(HasId, orm.MappedAsDataclass, Generic[TPopulation]):
             init=False,
         )
         population: orm.Mapped[TPopulation] = orm.relationship()
+        innov_db_body: orm.Mapped[str] = orm.mapped_column(nullable=False)
+        innov_db_brain: orm.Mapped[str] = orm.mapped_column(nullable=False)
 
     # ----------------------
     # Implementation details
@@ -56,6 +58,12 @@ class Generation(HasId, orm.MappedAsDataclass, Generic[TPopulation]):
         @orm.declared_attr
         def population(cls) -> orm.Mapped[TPopulation]:  # noqa
             return cls.__population_impl()
+        @orm.declared_attr
+        def innov_db_body(cls) -> orm.Mapped[str]:  # noqa
+            return cls.__innov_db_body_impl()
+        @orm.declared_attr
+        def innov_db_brain(cls) -> orm.Mapped[str]:  # noqa
+            return cls.__innov_db_brain_impl()
 
     __type_tpopulation: ClassVar[Type[TPopulation]]  # type: ignore[misc]
 
@@ -90,3 +98,12 @@ class Generation(HasId, orm.MappedAsDataclass, Generic[TPopulation]):
     @classmethod
     def __population_impl(cls) -> orm.Mapped[TPopulation]:
         return orm.relationship(cls.__type_tpopulation)
+
+    @classmethod
+    def __innov_db_body_impl(cls) -> orm.Mapped[str]:
+        return orm.mapped_column(nullable=False)
+    
+    @classmethod
+    def __innov_db_brain_impl(cls) -> orm.Mapped[str]:
+        return orm.mapped_column(nullable=False)
+    

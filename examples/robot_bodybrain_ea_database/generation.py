@@ -23,3 +23,5 @@ class Generation(Base, HasId):
         sqlalchemy.ForeignKey("population.id"), nullable=False, init=False
     )
     population: orm.Mapped[Population] = orm.relationship()
+    innov_db_body: orm.Mapped[str] = orm.mapped_column(nullable=False)
+    innov_db_brain: orm.Mapped[str] = orm.mapped_column(nullable=False)

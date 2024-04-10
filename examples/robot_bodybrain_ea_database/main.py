@@ -16,6 +16,10 @@ os.environ["DATABASE_FILE"] = file_name
 import config
 os.environ['MAXPARTS'] = str(config.MAX_PARTS)
 
+# Set elaborate
+assert sys.argv[4].title() in ["True", "False"], "elaborate must be either True or False"
+os.environ["elaborate"] = sys.argv[4].title()
+
 # Get genotype module
 if os.environ["ALGORITHM"] == "CPPN":
     from genotype import Genotype
@@ -26,6 +30,7 @@ else:
 
 # Get other packages
 from base import Base
+from copy import deepcopy
 import concurrent.futures
 from evaluator import Evaluator
 from experiment import Experiment
@@ -41,6 +46,9 @@ from revolve2.experimentation.optimization.ea import population_management, sele
 from revolve2.experimentation.rng import make_rng, seed_from_time
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import sessionmaker
 
 def select_parents(
     rng: np.random.Generator,
@@ -259,7 +267,7 @@ def develop_robots(offspring_genotypes: list[Genotype]):
         raise ValueError("ALGORITHM must be either GRN or CPPN")
     return robots
 
-def run_experiment(dbengine: Engine) -> None:
+def run_experiment(dbengine: Engine, iexp: int) -> None:
     """
     Goal:
         Run an experiment.
@@ -270,109 +278,145 @@ def run_experiment(dbengine: Engine) -> None:
     logging.info("----------------")
     logging.info("Start experiment")
 
-    # ---- Set up the random number generator.
-    rng_seed = seed_from_time()
-    rng = make_rng(rng_seed)
+    # Create a session
+    Session = sessionmaker(bind=dbengine)
+    session = Session()
 
-    # ---- Create and save the experiment instance.
-    experiment = Experiment(rng_seed = rng_seed)
-    logging.info("Saving experiment configuration.")
-    with Session(dbengine) as session:
+
+    # ---- Set up the random number generator.
+    if os.environ["elaborate"] == "False":
+        rng_seed = seed_from_time()
+        rng = make_rng(rng_seed)
+
+        # ---- Create and save the experiment instance.
+        experiment = Experiment(rng_seed = rng_seed)
+        logging.info("Saving experiment configuration.")
+        #with Session(dbengine) as session:
         session.add(experiment)
         session.commit()
-
+    elif os.environ["elaborate"] == "True":
+        # Create random generator
+        #with Session(dbengine) as session:
+        # rngs = session.execute(
+        #     select(Experiment.rng_seed)
+        #     .where(Experiment.id == iexp)).fetchall()
+        # rng_seed = rngs[0][0]
+        # rng = make_rng(rng_seed)
+        query = session.query(Experiment).filter(Experiment.id == iexp)
+        experiment = query.all()[0]
+        rng = make_rng(experiment.rng_seed)
+        
     # ---- Intialize the evaluator that will be used to evaluate robots.
     evaluator = Evaluator(headless = True, num_simulators = config.NUM_SIMULATORS,
                           terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
                           simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY, 
                           simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY)
 
-    # ---- CPPN innovation databases.
-    # Niet nodig voor GRN???
-    innov_db_body = multineat.InnovationDatabase()
-    innov_db_brain = multineat.InnovationDatabase()
+    if os.environ["elaborate"] == "False":
+        # ---- CPPN innovation databases.
+        # Niet nodig voor GRN???
+        innov_db_body = multineat.InnovationDatabase()
+        innov_db_brain = multineat.InnovationDatabase()
 
-    # ---- Create an initial population.
-    logging.info("Generating initial population.")
-    if os.environ["ALGORITHM"] == "CPPN":
-        initial_genotypes = [
-            Genotype.random(
-                innov_db_body = innov_db_body,
-                innov_db_brain = innov_db_brain,
-                rng=rng, zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
-                include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
+        # ---- Create an initial population.
+        logging.info("Generating initial population.")
+        if os.environ["ALGORITHM"] == "CPPN":
+            initial_genotypes = [
+                Genotype.random(
+                    innov_db_body = innov_db_body,
+                    innov_db_brain = innov_db_brain,
+                    rng=rng, zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
+                    include_chain_length = config.CPPNCHAINLENGTH, include_empty = config.CPPNEMPTY,
 
-            )
-            for _ in range(config.POPULATION_SIZE)
-        ]
-    elif os.environ["ALGORITHM"] == "GRN":
-        initial_genotypes = [
-            Genotype.random(
-                innov_db_brain = innov_db_brain,
-                rng = rng, include_bias = config.CPPNBIAS,
-            )
-            for _ in range(config.POPULATION_SIZE)
-        ]
-    else:
-        raise ValueError("ALGORITHM must be either GRN or CPPN")
-    # Evaluate the initial population.
-    logging.info("Evaluating initial population.")
-    robots = develop_robots(initial_genotypes)
-    initial_fitnesses, behavioral_measures = evaluator.evaluate(robots)
-
-    # Create a population of individuals, combining genotype with fitness.
-    population = Population(
-        individuals=[
-            Individual(genotype=genotype, fitness=fitness, energy_used = behave_measure["energy_used"], 
-                       
-                x_distance = behave_measure["x_distance"], tot_xdistance = behave_measure["tot_xdistance"], xmax = behave_measure["xmax"],
-                y_distance = behave_measure["y_distance"], tot_ydistance = behave_measure["tot_ydistance"],
-
-                min_dx = behave_measure["min_dx"], dx25 = behave_measure["dx25"], mean_dx = behave_measure["mean_dx"],
-                median_dx = behave_measure["median_dx"], dx75 = behave_measure["dx75"], max_dx = behave_measure["max_dx"],
-                std_dx = behave_measure["std_dx"],
-
-                min_dy = behave_measure["min_dy"], dy25 = behave_measure["dy25"], mean_dy = behave_measure["mean_dy"],
-                median_dy = behave_measure["median_dy"], dy75 = behave_measure["dy75"], max_dy = behave_measure["max_dy"],
-                std_dy = behave_measure["std_dy"],
-
-                energy_used_min = behave_measure["energy_used_min"], energy_used_25 = behave_measure["energy_used_25"],
-                energy_used_mean = behave_measure["energy_used_mean"], energy_used_median = behave_measure["energy_used_median"],
-                energy_used_75 = behave_measure["energy_used_75"], energy_used_max = behave_measure["energy_used_max"],
-                energy_used_std = behave_measure["energy_used_std"],
-
-                force_std_motor_min = behave_measure["force_std_motor_min"], force_std_motor_25 = behave_measure["force_std_motor_25"],
-                force_std_motor_mean = behave_measure["force_std_motor_mean"], force_std_motor_median = behave_measure["force_std_motor_median"],
-                force_std_motor_75 = behave_measure["force_std_motor_75"], force_std_motor_max = behave_measure["force_std_motor_max"],
-                force_std_motor_std = behave_measure["force_std_motor_std"],
-
-                force_std_all_min = behave_measure["force_std_all_min"], force_std_all_25 = behave_measure["force_std_all_25"],
-                force_std_all_mean = behave_measure["force_std_all_mean"], force_std_all_median = behave_measure["force_std_all_median"],
-                force_std_all_75 = behave_measure["force_std_all_75"], force_std_all_max = behave_measure["force_std_all_max"],
-                force_std_all_std = behave_measure["force_std_all_std"],
-
-                efficiency = behave_measure["efficiency"], efficiency_min = behave_measure["efficiency_min"],
-                efficiency_25 = behave_measure["efficiency_25"], efficiency_mean = behave_measure["efficiency_mean"],
-                efficiency_median = behave_measure["efficiency_median"], efficiency_75 = behave_measure["efficiency_75"],
-                efficiency_max = behave_measure["efficiency_max"], efficiency_std = behave_measure["efficiency_std"],
-                
-                balance = behave_measure["balance"]
                 )
-            for genotype, fitness, behave_measure in zip(
-                initial_genotypes, initial_fitnesses, behavioral_measures, strict=True
-            )
-        ]
-    )
+                for _ in range(config.POPULATION_SIZE)
+            ]
+        elif os.environ["ALGORITHM"] == "GRN":
+            initial_genotypes = [
+                Genotype.random(
+                    innov_db_brain = innov_db_brain,
+                    rng = rng, include_bias = config.CPPNBIAS,
+                )
+                for _ in range(config.POPULATION_SIZE)
+            ]
+        else:
+            raise ValueError("ALGORITHM must be either GRN or CPPN")
+        # Evaluate the initial population.
+        logging.info("Evaluating initial population.")
+        robots = develop_robots(initial_genotypes)
+        initial_fitnesses, behavioral_measures = evaluator.evaluate(robots)
+
+        # Create a population of individuals, combining genotype with fitness.
+        population = Population(
+            individuals=[
+                Individual(genotype=genotype, fitness=fitness, energy_used = behave_measure["energy_used"], 
+                        
+                    x_distance = behave_measure["x_distance"], tot_xdistance = behave_measure["tot_xdistance"], xmax = behave_measure["xmax"],
+                    y_distance = behave_measure["y_distance"], tot_ydistance = behave_measure["tot_ydistance"],
+
+                    min_dx = behave_measure["min_dx"], dx25 = behave_measure["dx25"], mean_dx = behave_measure["mean_dx"],
+                    median_dx = behave_measure["median_dx"], dx75 = behave_measure["dx75"], max_dx = behave_measure["max_dx"],
+                    std_dx = behave_measure["std_dx"],
+
+                    min_dy = behave_measure["min_dy"], dy25 = behave_measure["dy25"], mean_dy = behave_measure["mean_dy"],
+                    median_dy = behave_measure["median_dy"], dy75 = behave_measure["dy75"], max_dy = behave_measure["max_dy"],
+                    std_dy = behave_measure["std_dy"],
+
+                    energy_used_min = behave_measure["energy_used_min"], energy_used_25 = behave_measure["energy_used_25"],
+                    energy_used_mean = behave_measure["energy_used_mean"], energy_used_median = behave_measure["energy_used_median"],
+                    energy_used_75 = behave_measure["energy_used_75"], energy_used_max = behave_measure["energy_used_max"],
+                    energy_used_std = behave_measure["energy_used_std"],
+
+                    force_std_motor_min = behave_measure["force_std_motor_min"], force_std_motor_25 = behave_measure["force_std_motor_25"],
+                    force_std_motor_mean = behave_measure["force_std_motor_mean"], force_std_motor_median = behave_measure["force_std_motor_median"],
+                    force_std_motor_75 = behave_measure["force_std_motor_75"], force_std_motor_max = behave_measure["force_std_motor_max"],
+                    force_std_motor_std = behave_measure["force_std_motor_std"],
+
+                    force_std_all_min = behave_measure["force_std_all_min"], force_std_all_25 = behave_measure["force_std_all_25"],
+                    force_std_all_mean = behave_measure["force_std_all_mean"], force_std_all_median = behave_measure["force_std_all_median"],
+                    force_std_all_75 = behave_measure["force_std_all_75"], force_std_all_max = behave_measure["force_std_all_max"],
+                    force_std_all_std = behave_measure["force_std_all_std"],
+
+                    efficiency = behave_measure["efficiency"], efficiency_min = behave_measure["efficiency_min"],
+                    efficiency_25 = behave_measure["efficiency_25"], efficiency_mean = behave_measure["efficiency_mean"],
+                    efficiency_median = behave_measure["efficiency_median"], efficiency_75 = behave_measure["efficiency_75"],
+                    efficiency_max = behave_measure["efficiency_max"], efficiency_std = behave_measure["efficiency_std"],
+                    
+                    balance = behave_measure["balance"]
+                    )
+                for genotype, fitness, behave_measure in zip(
+                    initial_genotypes, initial_fitnesses, behavioral_measures, strict=True
+                )
+            ]
+        )
 
 
-    # Finish the zeroth generation and save it to the database.
-    generation = Generation(
-        experiment=experiment, generation_index=0, population=population
-    )
-    logging.info("Saving generation.")
-    with Session(dbengine, expire_on_commit=False) as session:
+        # Finish the zeroth generation and save it to the database.
+        generation = Generation(
+            experiment=experiment, generation_index=0, population=population,
+            innov_db_body = innov_db_body.Serialize(), innov_db_brain = innov_db_brain.Serialize()
+        )
+        logging.info("Saving generation.")
+        #with Session(dbengine, expire_on_commit=False) as session:
         session.add(generation)
         session.commit()
+    elif os.environ["elaborate"] == "True":
+        #with Session(dbengine) as session:
+        query = session.query(Generation).filter(Generation.experiment_id == iexp)     
+        # Get the generation index
+        generation_idxs = [generation.generation_index for generation in query.all()]
+        idx_max_gen = np.argmax(generation_idxs)
+        try:
+            assert idx_max_gen % 2 == 0, "The generation index must be even"
+        except:
+             idx_max_gen = int(idx_max_gen - 1)
+        # --- Get maximum generation, population
+        population = query[idx_max_gen].population
+        generation = query[idx_max_gen]
+        innov_db_body = multineat.InnovationDatabase()
+        innov_db_body.Deserialize(generation.innov_db_body)
+        innov_db_brain = multineat.InnovationDatabase()
+        innov_db_brain.Deserialize(generation.innov_db_brain)
     
 
     # Start the actual optimization process.
@@ -456,19 +500,14 @@ def run_experiment(dbengine: Engine) -> None:
         )
 
 
-        # Create 'fake' generation for offspring and save it to the database.
-        generation = Generation(
+        # Create 'fake' generation for offspring
+        generation1 = Generation(
             experiment = experiment,
             generation_index=generation.generation_index + 1,
-            population = offspring_population,
+            population = offspring_population, innov_db_body = innov_db_body.Serialize(), innov_db_brain = innov_db_brain.Serialize()
         )
 
-        logging.info("Saving offspring.")
-        with Session(dbengine, expire_on_commit=False) as session:
-            session.add(generation)
-            session.commit()
-
-        # Create the next population by selecting survivors.
+        # Create the next population by selecting survivors
         population, idx4selection = select_survivors(
             rng,
             population,
@@ -478,14 +517,16 @@ def run_experiment(dbengine: Engine) -> None:
         # Make it all into a generation and save it to the database.
         generation = Generation(
             experiment=experiment,
-            generation_index=generation.generation_index + 1,
-            population=population,
+            generation_index=generation.generation_index + 2,
+            population=population, innov_db_body = innov_db_body.Serialize(), innov_db_brain = innov_db_brain.Serialize()
         )
 
-        logging.info("Saving generation.")
-        with Session(dbengine, expire_on_commit=False) as session:
-            session.add(generation)
-            session.commit()
+        logging.info("Saving offspring and population.")
+        session.add(generation1)
+        session.add(generation)
+        session.commit()
+
+    session.close()
         
 
 def main() -> None:
@@ -493,17 +534,32 @@ def main() -> None:
     # Set up logging.
     setup_logging(file_name="log.txt")
 
-    # Open the database, only if it does not already exists.
-    dbengine = open_database_sqlite(
-        config.DATABASE_FILE, open_method=OpenMethod.NOT_EXISTS_AND_CREATE
+    # Open the database
+    print(os.environ["elaborate"])
+    print(bool(os.environ["elaborate"]))
+    if os.environ["elaborate"] == "False":
+        # Only if it does not already exists.
+        dbengine = open_database_sqlite(
+            config.DATABASE_FILE, open_method=OpenMethod.NOT_EXISTS_AND_CREATE
+        )
+        # Create the structure of the database.
+        Base.metadata.create_all(dbengine)
+    elif os.environ["elaborate"] == "True":
+            dbengine = open_database_sqlite(
+        config.DATABASE_FILE, open_method=OpenMethod.OPEN_IF_EXISTS
     )
-    # Create the structure of the database.
-    Base.metadata.create_all(dbengine)
 
     # Run the experiment several times.
-    for _ in range(config.NUM_REPETITIONS):
-        run_experiment(dbengine)
-
+    if os.environ["elaborate"] == "False":
+        for iexp in range(config.NUM_REPETITIONS):
+            run_experiment(dbengine, iexp)
+    elif os.environ["elaborate"] == "True":
+        with Session(dbengine) as ses:
+            pop_idxs = ses.execute(select(Experiment.id.label("experiment_id"))).fetchall()
+            pop_idxs = [pop_idx[0] for pop_idx in pop_idxs]
+        
+        for iexp in range(1, max(pop_idxs) + 1):
+            run_experiment(dbengine, iexp)
 
 if __name__ == "__main__":
     # run with arguments <algo> <mode> <file_name> !!!
