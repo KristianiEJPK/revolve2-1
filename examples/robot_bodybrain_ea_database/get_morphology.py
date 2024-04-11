@@ -76,20 +76,25 @@ def main():
     print(f"Number of rows: {nrows}")
 
     # Get morphologies
-
-    with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
-                ) as executor:
-                    futures = [
-                        executor.submit(get_morphologies, row, config.ZDIRECTION,
-                                        config.CPPNBIAS, config.CPPNCHAINLENGTH, config.CPPNEMPTY,
-                                        config.MAX_PARTS, config.MODE_COLLISION, config.MODE_CORE_MULT,
-                                        config.MODE_SLOTS4FACE, config.MODE_SLOTS4FACE_ALL,
-                                        config.MODE_NOT_VERTICAL) for row in rows]
-                     
-    dicts = [future.result() for future in futures]
-    
-    # Convert to dataframe
-    df = pd.DataFrame(dicts)
+    i = 0
+    while i < nrows:
+        rowssub = rows[i:i+30000]
+        with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
+                    ) as executor:
+                        futures = [
+                            executor.submit(get_morphologies, row, config.ZDIRECTION,
+                                            config.CPPNBIAS, config.CPPNCHAINLENGTH, config.CPPNEMPTY,
+                                            config.MAX_PARTS, config.MODE_COLLISION, config.MODE_CORE_MULT,
+                                            config.MODE_SLOTS4FACE, config.MODE_SLOTS4FACE_ALL,
+                                            config.MODE_NOT_VERTICAL) for row in rowssub]
+                        
+        dicts = [future.result() for future in futures]
+        
+        # Convert to dataframe
+        df = pd.DataFrame(dicts)
+        df.to_csv(f"morphological_measures_experiment_{file_name.split('.')[0]}_{i}.csv", index = False)
+        # Append to dataframe
+        i += 30000
 
 
     # Create directory
@@ -99,7 +104,7 @@ def main():
     # import uuid
     # uuid = uuid.uuid4()
     #df.to_csv(f"morphological_measures_experiment_{uuid}.csv", index = False)
-    df.to_csv(f"morphological_measures_experiment_{file_name.split('.')[0]}.csv", index = False)
+    
 # # # Get max and mean fitness per experiment per generation
 # # agg_per_experiment_per_generation = (
 # #     df.groupby(["experiment_id", "generation_index"])
