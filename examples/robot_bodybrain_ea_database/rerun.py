@@ -55,22 +55,10 @@ def main() -> None:
             select(Genotype, Individual.fitness, Individual.energy_used, Individual.efficiency,
                    Individual.x_distance, Individual.y_distance)
             .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
-            .filter(Genotype.id == 1)
-            # .order_by(Individual.fitness.desc()).limit(1000) #Individual.population_id.desc()
+            .order_by(Individual.fitness.desc()).limit(1000)
 
-        ).first()
-        # Get individual with id 1
-        # rows = ses.execute(
-        #     select(Individual.id, Genotype, Individual.fitness)
-        #     .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
-        #     .filter(Individual.id == 1)
-        # ).first()
-
-
+        ).all()
     
-    print(rows[0])
-    print(rows[1])
-    exit(0)
     for irow, row in enumerate(rows[0:301]):
         genotype = row[0]
         print(genotype)
