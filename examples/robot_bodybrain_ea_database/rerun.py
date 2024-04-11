@@ -61,7 +61,6 @@ def main() -> None:
     
     for irow, row in enumerate(rows[0:301]):
         genotype = row[0]
-        print(genotype)
         fitness = row[1]
         energy_used = row[2]
         efficiency = row[3]
@@ -95,6 +94,7 @@ def main() -> None:
         # Show the robot.
         fitnesses, behavioral_measures = evaluator.evaluate([modular_robot])
         logging.info(f"Fitness Measured: {fitnesses[0]}")
+        logging.info(f"X_distance Measured: {behavioral_measures[0]['x_distance']}")
         print("-----------------------------------------------")
     
 if __name__ == "__main__":
