@@ -87,6 +87,11 @@ class BrainCpgNetworkNeighborV1(ModularRobotBrainCpgNetworkNeighbor):
                 float(pos1[0]), float(pos1[1]), float(pos1[2]), float(pos2[0]), float(pos2[1]), float(pos2[2]),],)
                 for (pos1, pos2) in connecting_positions]
 
+
+        import pandas as pd
+        pd.DataFrame(internal_weights).to_csv('internal_weights.csv')
+        pd.DataFrame(external_weights).to_csv('external_weights.csv')
+        vbknm
         return (internal_weights, external_weights)
 
     @staticmethod
