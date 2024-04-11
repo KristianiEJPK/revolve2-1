@@ -60,6 +60,7 @@ def main() -> None:
         
     for irow, row in enumerate(rows[0:301]):
         genotype = row[0]
+        print(genotype)
         fitness = row[1]
         energy_used = row[2]
         efficiency = row[3]
