@@ -1,5 +1,4 @@
 """Rerun the best robot between all experiments."""
-
 import logging
 import os
 import sys
@@ -99,4 +98,10 @@ def main() -> None:
     
 if __name__ == "__main__":
     # run with arguments <algo> <mode> <file_name> !!!
+    from pyvirtualdisplay import Display
+
+    # Create a virtual display
+    display = Display(visible=0, size=(800, 600))
+    display.start()
     main()
+    display.stop()
