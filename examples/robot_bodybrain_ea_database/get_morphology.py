@@ -4,6 +4,7 @@ import os
 algo = sys.argv[1]
 mode = sys.argv[2]
 file_name = sys.argv[3]
+row2start = sys.argv[4]
 assert algo in ["GRN", "CPPN"], "ALGORITHM must be either GRN or CPPN"
 assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
 assert type(file_name) == str, "FILE_NAME must be a string"
@@ -11,6 +12,7 @@ assert file_name.endswith(".sqlite"), "FILE_NAME must end with sqlite"
 os.environ["ALGORITHM"] = algo
 os.environ["MODE"] = mode
 os.environ["DATABASE_FILE"] = file_name
+os.environ["ROW2START"] = row2start
 # Set parameters
 import config
 os.environ['MAXPARTS'] = str(config.MAX_PARTS)
@@ -76,7 +78,7 @@ def main():
     print(f"Number of rows: {nrows}")
 
     # Get morphologies
-    i = 0
+    i = int(os.environ["ROW2START"]) # 0 saved --> 30000 would be the first of next chunk
     while i < nrows:
         rowssub = rows[i:i+30000]
         with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
