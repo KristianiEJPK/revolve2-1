@@ -100,7 +100,7 @@ class Evaluator:
             scene.add_robot(robot)
             scenes.append(scene)
         # ---- Simulate all scenes.
-        if not self.record:
+        if self.record != "True":
             scene_states = simulate_scenes(
                 simulator=self._simulator,
                 batch_parameters = batch_params,

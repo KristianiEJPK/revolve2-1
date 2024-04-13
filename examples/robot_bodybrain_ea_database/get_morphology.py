@@ -64,7 +64,7 @@ def select_data(dbengine, experiment_id, min_population_id, max_population_id) -
             .join_from(Population, Individual, Population.id == Individual.population_id)
             .join_from(Individual, Genotype, Individual.genotype_id == Genotype.id).where(
             and_(Experiment.id == experiment_id,
-                 Population.id.between(min_population_id, max_population_id))
+                 Generation.generation_index.between(min_population_id, max_population_id))
             ),
         ).fetchall()
 
@@ -88,7 +88,7 @@ def main():
             popid2start = 0
         
         for pop in range(popid2start * 2, (int(os.environ["NPOP"]) * 2) + 1, 10):
-            data = select_data(dbengine, exp, pop, int(pop + 4))
+            data = select_data(dbengine, exp, pop, int(pop + 9))
             
             with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
                         ) as executor:
