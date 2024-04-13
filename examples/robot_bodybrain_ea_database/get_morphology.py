@@ -5,6 +5,7 @@ algo = sys.argv[1]
 mode = sys.argv[2]
 file_name = sys.argv[3]
 row2start = sys.argv[4]
+experiment_id = sys.argv[5]
 assert algo in ["GRN", "CPPN"], "ALGORITHM must be either GRN or CPPN"
 assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
 assert type(file_name) == str, "FILE_NAME must be a string"
@@ -13,6 +14,7 @@ os.environ["ALGORITHM"] = algo
 os.environ["MODE"] = mode
 os.environ["DATABASE_FILE"] = file_name
 os.environ["ROW2START"] = row2start
+os.environ["EXPERIMENT_ID"] = experiment_id
 # Set parameters
 import config
 os.environ['MAXPARTS'] = str(config.MAX_PARTS)
@@ -35,7 +37,7 @@ from generation import Generation
 from individual import Individual
 from population import Population
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 from revolve2.experimentation.database import OpenMethod, open_database_sqlite
 from revolve2.experimentation.logging import setup_logging
@@ -57,7 +59,9 @@ def select_data(dbengine) -> pd.DataFrame:
             .join_from(Experiment, Generation, Experiment.id == Generation.experiment_id)
             .join_from(Generation, Population, Generation.population_id == Population.id)
             .join_from(Population, Individual, Population.id == Individual.population_id)
-            .join_from(Individual, Genotype, Individual.genotype_id == Genotype.id),
+            .join_from(Individual, Genotype, Individual.genotype_id == Genotype.id).where(
+            and_(Experiment.id == int(os.environ["EXPERIMENT_ID"]),)
+            ),
         ).fetchall()
 
     return rows

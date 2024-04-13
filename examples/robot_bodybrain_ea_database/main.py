@@ -12,6 +12,7 @@ assert file_name.endswith(".sqlite"), "FILE_NAME must end with sqlite"
 os.environ["ALGORITHM"] = algo
 os.environ["MODE"] = mode
 os.environ["DATABASE_FILE"] = file_name
+os.environ["RERUN"] = "False"
 # Set parameters
 import config
 os.environ['MAXPARTS'] = str(config.MAX_PARTS)

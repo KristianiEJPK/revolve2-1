@@ -6,7 +6,11 @@ from revolve2.simulation.scene import SimulationState
 from revolve2.simulation.simulator import Batch, Simulator
 
 from ._simulate_manual_scene import simulate_manual_scene
-from ._simulate_scene import simulate_scene
+
+if os.environ["RERUN"] == "True":
+    from ._simulate_scene_rerun import simulate_scene
+elif os.environ["RERUN"] == "False":
+    from ._simulate_scene import simulate_scene
 
 
 class LocalSimulator(Simulator):
@@ -70,7 +74,7 @@ class LocalSimulator(Simulator):
             else 1.0 / batch.parameters.sampling_frequency
         )
 
-        if batch.record_settings is not None:
+        if (batch.record_settings is not None) and (os.environ["WRITEVIDEOS"] == "True"):
             os.makedirs(batch.record_settings.video_directory, exist_ok=False)
 
         if self._manual_control:

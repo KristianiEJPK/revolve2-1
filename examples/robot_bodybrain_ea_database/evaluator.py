@@ -29,6 +29,7 @@ class Evaluator:
         sampling_frequency: float,
         simulation_timestep: float,
         control_frequency: float, record: bool = False,
+        writefiles: bool = "False",
         video_path: str = None
     ) -> None:
         """
@@ -50,6 +51,7 @@ class Evaluator:
         self.simulation_timestep = simulation_timestep
         self.control_frequency = control_frequency
         self.record = record
+        self.writefiles = writefiles
         self.video_path = video_path
 
         # ---- Set the terrain.
@@ -88,7 +90,7 @@ class Evaluator:
             control_frequency = self.control_frequency)
         
         # ---- Create record settings.
-        if self.record:
+        if (self.record == "True") or (self.writefiles == "True"):
             record_settings = RecordSettings(video_directory = self.video_path)
         else: pass
         # ---- Create the scenes.

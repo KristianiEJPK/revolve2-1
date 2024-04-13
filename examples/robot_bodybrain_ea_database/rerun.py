@@ -8,7 +8,15 @@ algo = sys.argv[1]
 mode = sys.argv[2]
 file_name = sys.argv[3]
 headless = sys.argv[4]
+writefiles = sys.argv[5]
+writevideos = sys.argv[6]
+
 assert headless in ["True", "False"], "HEADLESS must be either True or False"
+if (writefiles == "True"):
+    assert (writevideos == "False"), "WRITEVIDEOS must be False if WRITEFILES is True"
+    assert (headless == "True"), "HEADLESS must be True if WRITEFILES is True"
+assert writefiles in ["True", "False"], "WRITEFILES must be either True or False"
+assert writevideos in ["True", "False"], "WRITEVIDEOS must be either True or False"
 assert algo in ["GRN", "CPPN"], "ALGORITHM must be either GRN or CPPN"
 assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
 assert type(file_name) == str, "FILE_NAME must be a string"
@@ -17,6 +25,13 @@ os.environ["ALGORITHM"] = algo
 os.environ["MODE"] = mode
 os.environ["DATABASE_FILE"] = file_name
 os.environ["HEADLESS"] = headless
+os.environ["WRITEFILES"] = writefiles
+os.environ["WRITEVIDEOS"] = writevideos
+
+if os.environ["WRITEFILES"] == "True":
+    os.environ["RERUN"] = "True"
+else:
+    os.environ["RERUN"] = "False"
 
 # Import parameters
 import config
@@ -33,6 +48,7 @@ else:
 # Import other modules
 from evaluator import Evaluator
 from individual import Individual
+import shutil
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -58,7 +74,7 @@ def main() -> None:
 
         ).all()
     
-    for irow, row in enumerate(rows[0:301]):
+    for irow, row in enumerate(rows[0:1]):
         genotype = row[0]
         fitness = row[1]
         energy_used = row[2]
@@ -84,11 +100,10 @@ def main() -> None:
 
 
         # Create the evaluator.
-        headless = os.environ["HEADLESS"] == "True"
         evaluator = Evaluator(headless = headless, num_simulators = 1, terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
                               simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY,
                               simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY,
-                              record = not headless, video_path = os.getcwd() + f"/MuJoCo_videos/MuJoCo_{irow}")
+                              writefiles = writefiles, record = writevideos, video_path = os.getcwd() + f"/MuJoCo_videos/MuJoCo_{irow}")
 
         # Show the robot.
         fitnesses, behavioral_measures = evaluator.evaluate([modular_robot])
@@ -97,5 +112,23 @@ def main() -> None:
         print("-----------------------------------------------")
     
 if __name__ == "__main__":
-    # run with arguments <algo> <mode> <file_name> !!!
+    # run with arguments <algo> <mode> <file_name> <headless> <writefiles> <writevideos>!!!
+    # --- Create/Empty directories for XMLs and PKLs
+    for directory_path in ["RERUN\XMLs", "RERUN\PKLs", "MuJoCo_videos"]:
+        if not os.path.exists(directory_path):
+            # Create the directory and its parents if they don't exist
+                os.makedirs(directory_path)
+        else:
+            for filename in os.listdir(directory_path):
+                # Construct the full path
+                file_path = os.path.join(directory_path, filename)
+
+                # Check if it's a file
+                if os.path.isfile(file_path):
+                    # Remove the file
+                    os.remove(file_path)
+                elif os.path.isdir(file_path):
+                    # Remove the directory
+                    shutil.rmtree(file_path)
+    # --- Rerun
     main()
