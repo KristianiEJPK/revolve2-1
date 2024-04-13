@@ -87,7 +87,7 @@ def main():
         else:
             popid2start = 0
         
-        for pop in range(popid2start, int(os.environ["NPOP"]) + 1, 5):
+        for pop in range(popid2start * 2, (int(os.environ["NPOP"]) * 2) + 1, 10):
             data = select_data(dbengine, exp, pop, int(pop + 4))
             
             with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
