@@ -114,7 +114,7 @@ def main() -> None:
 if __name__ == "__main__":
     # run with arguments <algo> <mode> <file_name> <headless> <writefiles> <writevideos>!!!
     # --- Create/Empty directories for XMLs and PKLs
-    for directory_path in ["RERUN\XMLs", "RERUN\PKLs", "MuJoCo_videos"]:
+    for directory_path in ["RERUN\\XMLs", "RERUN\\PKLs", "MuJoCo_videos"]:
         if not os.path.exists(directory_path):
             # Create the directory and its parents if they don't exist
                 os.makedirs(directory_path)
