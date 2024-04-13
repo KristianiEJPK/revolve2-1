@@ -18,10 +18,10 @@ import pickle
 
 
 def write_files(model, data, time):
-    filename = f"RERUN/XMLs/mujoco_{time}.xml"
+    filename = f"\RERUN\XMLs\mujoco_{time}.xml"
     with open(filename, "w") as mjcf_file:
         mujoco.mj_saveLastXML(mjcf_file.name, model)
-    filename = f"RERUN/PKLs/mujoco_{time}.pkl"
+    filename = f"\RERUN\PKLs\mujoco_{time}.pkl"
     with open(filename, 'wb') as file:
         pickle.dump(data, file)
 
