@@ -71,7 +71,6 @@ def main() -> None:
                    Individual.x_distance, Individual.y_distance)
             .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
             .order_by(Individual.fitness.desc()).limit(1000)
-
         ).all()
     
     for irow, row in enumerate(rows[0:1]):

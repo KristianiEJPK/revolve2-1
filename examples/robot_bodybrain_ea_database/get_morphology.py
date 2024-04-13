@@ -1,11 +1,14 @@
+import logging
 import sys
 import os
 # Set algorithm, mode and file name from command line arguments.
 algo = sys.argv[1]
 mode = sys.argv[2]
 file_name = sys.argv[3]
-row2start = sys.argv[4]
-experiment_id = sys.argv[5]
+experiment_id_start = sys.argv[4]
+pop2start = sys.argv[5]
+os.environ["NEXP"] = sys.argv[6]
+os.environ["NPOP"] = sys.argv[7]
 assert algo in ["GRN", "CPPN"], "ALGORITHM must be either GRN or CPPN"
 assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
 assert type(file_name) == str, "FILE_NAME must be a string"
@@ -13,8 +16,8 @@ assert file_name.endswith(".sqlite"), "FILE_NAME must end with sqlite"
 os.environ["ALGORITHM"] = algo
 os.environ["MODE"] = mode
 os.environ["DATABASE_FILE"] = file_name
-os.environ["ROW2START"] = row2start
-os.environ["EXPERIMENT_ID"] = experiment_id
+os.environ["POP2START"] = pop2start
+os.environ["EXPERIMENT_ID_START"] = experiment_id_start
 # Set parameters
 import config
 os.environ['MAXPARTS'] = str(config.MAX_PARTS)
@@ -42,7 +45,7 @@ from sqlalchemy import select, and_
 from revolve2.experimentation.database import OpenMethod, open_database_sqlite
 from revolve2.experimentation.logging import setup_logging
 
-def select_data(dbengine) -> pd.DataFrame:
+def select_data(dbengine, experiment_id, min_population_id, max_population_id) -> pd.DataFrame:
     """Goal:
         Select the data of the column
     -------------------------------------------------------------
@@ -60,7 +63,8 @@ def select_data(dbengine) -> pd.DataFrame:
             .join_from(Generation, Population, Generation.population_id == Population.id)
             .join_from(Population, Individual, Population.id == Individual.population_id)
             .join_from(Individual, Genotype, Individual.genotype_id == Genotype.id).where(
-            and_(Experiment.id == int(os.environ["EXPERIMENT_ID"]),)
+            and_(Experiment.id == experiment_id,
+                 Population.id.between(min_population_id, max_population_id))
             ),
         ).fetchall()
 
@@ -76,31 +80,31 @@ def main():
     # Open database
     dbengine = open_database_sqlite(config.DATABASE_FILE, open_method=OpenMethod.OPEN_IF_EXISTS)
 
-    # Get pandas data
-    rows = select_data(dbengine)
-    nrows = len(rows)
-    print(f"Number of rows: {nrows}")
-
     # Get morphologies
-    i = int(os.environ["ROW2START"]) # 0 saved --> 30000 would be the first of next chunk
-    while i < nrows:
-        rowssub = rows[i:i+30000]
-        with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
-                    ) as executor:
-                        futures = [
-                            executor.submit(get_morphologies, row, config.ZDIRECTION,
-                                            config.CPPNBIAS, config.CPPNCHAINLENGTH, config.CPPNEMPTY,
-                                            config.MAX_PARTS, config.MODE_COLLISION, config.MODE_CORE_MULT,
-                                            config.MODE_SLOTS4FACE, config.MODE_SLOTS4FACE_ALL,
-                                            config.MODE_NOT_VERTICAL) for row in rowssub]
-                        
-        dicts = [future.result() for future in futures]
+    for exp in range(int(os.environ["EXPERIMENT_ID_START"]), int(os.environ["NEXP"]) + 1):
+        if exp == int(os.environ["EXPERIMENT_ID_START"]):
+            popid2start = int(os.environ["POP2START"])
+        else:
+            popid2start = 0
         
-        # Convert to dataframe
-        df = pd.DataFrame(dicts)
-        df.to_csv(f"morphological_measures_experiment_{file_name.split('.')[0]}_{i}.csv", index = False)
-        # Append to dataframe
-        i += 30000
+        for pop in range(popid2start, int(os.environ["NPOP"]) + 1, 5):
+            data = select_data(dbengine, exp, pop, int(pop + 4))
+            
+            with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
+                        ) as executor:
+                            futures = [
+                                executor.submit(get_morphologies, row, config.ZDIRECTION,
+                                                config.CPPNBIAS, config.CPPNCHAINLENGTH, config.CPPNEMPTY,
+                                                config.MAX_PARTS, config.MODE_COLLISION, config.MODE_CORE_MULT,
+                                                config.MODE_SLOTS4FACE, config.MODE_SLOTS4FACE_ALL,
+                                                config.MODE_NOT_VERTICAL) for row in data]
+                            
+            dicts = [future.result() for future in futures]
+            
+            # Convert to dataframe
+            df = pd.DataFrame(dicts)
+            logging.info(f"Experiment {exp}: population {pop} done")
+            df.to_csv(f"morphological_measures_experiment_{file_name.split('.')[0]}_{exp}_{pop}.csv", index = False)
 
 
     # Create directory
