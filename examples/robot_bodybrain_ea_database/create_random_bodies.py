@@ -1,3 +1,4 @@
+import concurrent.futures
 from copy import deepcopy
 from dataclasses import dataclass
 import json
@@ -357,106 +358,96 @@ def get_new_robot(max_parts):
         
     return body, new_id_string, part_count, nactivehinges, nbricks
 
+# ---- Main
+def main(reps, min_modules, max_modules):
+    # ---- Initialize
+    queried = {}
+    counts = {}
 
-bodies = []
-grids, ids = {}, pd.DataFrame([], columns = ["id", "count"])
-ngrids = [] # 3000 total
-compute2spend = {1: 1000, 2: 1000, 3: 1000, 4: 1000, 5: 1000, 6: 1000, 7: 1000, 8: 1000, 9: 1000, 10: 1000,
-                 11: 1000, 12: 1000, 13: 1000, 14: 1000, 15: 1000, 16: 1000, 17: 1000, 18: 1000, 19: 1000, 20: 1000}
-max_solutions = {1: np.inf, 2: np.inf, 3: np.inf, 4: np.inf, 5: np.inf, 6: np.inf, 7: np.inf, 8: np.inf, 9: np.inf, 10: np.inf,
-                 11: np.inf, 12: np.inf, 13: np.inf, 14: np.inf, 15: np.inf, 16: np.inf, 17: np.inf, 18: np.inf, 19: np.inf, 20: np.inf}
-
-for max_parts in range(1, 21):
-    if ngrids != []:
-        old_ngrids = np.cumsum(ngrids)[-1]
-    else: old_ngrids = 0
-
-    # Look if file exists for all unique ids
-    if os.path.exists(f'C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\{max_parts}.json'):
-        with open(f'C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\{max_parts}.json', 'r') as f:
-            dict_grid = json.load(f)
-            new_dict = {}
-            for key, value in dict_grid.items():
-                for nbricks, brickdict in value.items():
-                    new_dict[int(nbricks)] = {}
-                    for nactivehinges, gridlist in brickdict.items():
-                        new_dict[int(nbricks)][int(nactivehinges)] = gridlist
-            
-                grids[max_parts] = new_dict
-                ngrids += int(key) * [1]
-            del value
-    else:
-        pass
-    # Look if file exists for unique id counts
-    if os.path.exists(f'C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\idcounts.csv'):
-        ids = pd.read_csv(f'C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\idcounts.csv')
-    else: pass
-
-
-    # Get new robots
-    for _ in range(compute2spend[max_parts] * 1):
-        # Get new robot
-        body, new_id_string, part_count, nactivehinges, nbricks = get_new_robot(max_parts = max_parts)
-
-        #grid = grid.tolist()
-        # Store id?
-        if part_count not in grids.keys():
-            grids[part_count] = {}
-            grids[part_count][nbricks] = {}
-            #grids[part_count][nbricks][nactivehinges] = [grid]
-            grids[part_count][nbricks][nactivehinges] = [new_id_string]
-            #bodies.append(body)
-            ngrids.append(1)
-        elif nbricks not in grids[part_count].keys():
-            grids[part_count][nbricks] = {}
-            #grids[part_count][nbricks][nactivehinges] = [grid]
-            grids[part_count][nbricks][nactivehinges] = [new_id_string]
-            #bodies.append(body)
-            ngrids.append(1)
-        elif nactivehinges not in grids[part_count][nbricks].keys():
-            #grids[part_count][nbricks][nactivehinges] = [grid]
-            grids[part_count][nbricks][nactivehinges] = [new_id_string]
-            #bodies.append(body)
-            ngrids.append(1)
+    # ---- Choose random number of parts for each rep and sort to save on loading
+    max_parts = [np.random.randint(min_modules, max_modules + 1) for _ in range(0, reps)]
+    max_parts.sort()
+    
+    # ---- Loop over all reps
+    for rep in range(0, reps):
+        # ---- Get max parts
+        max_part = max_parts[rep]
+        # ---- Look if file exists already
+        if max_part not in queried.keys():
+            if os.path.exists(f'Parts_{max_part}.json'):
+                # Get existing strings
+                with open(f'Parts_{max_part}.json', 'r') as f:
+                    dict_grid = json.load(f)
+                    # Get new dict
+                    new_dict = {}
+                    for key, value in dict_grid.items():
+                        for nbricks, brickdict in value.items():
+                            new_dict[int(nbricks)] = {}
+                            for nactivehinges, gridlist in brickdict.items():
+                                new_dict[int(nbricks)][int(nactivehinges)] = gridlist
+                # Store in queried
+                queried[max_part] = new_dict
+                # Get counts
+                with open(f'Parts_{max_part}_counts.json', 'r') as f:
+                    dict_counts = json.load(f)
+                    # Get new dict
+                    new_dict = {}
+                    for key, value in dict_counts.items():
+                        for nbricks, brickdict in value.items():
+                            new_dict[int(nbricks)] = {}
+                            for nactivehinges, gridlist in brickdict.items():
+                                new_dict[int(nbricks)][int(nactivehinges)] = gridlist
+                # Store in counts
+                counts[max_part] = new_dict
+            else:
+                queried[max_part] = {}
+                counts[max_part] = {}
+        else: pass
+        
+        # ---- Get new robot
+        body, new_id_string, part_count, nactivehinges, nbricks = get_new_robot(max_parts = max_part)
+        assert part_count == max_part, f"Error: The number of parts is not equal to the maximum number of parts. Part Count: {part_count}, Max Part: {max_part}."
+        # ---- Store id?
+        if nbricks not in queried[part_count].keys():
+            queried[part_count][nbricks] = {nactivehinges: [new_id_string]}
+            counts[part_count][nbricks] = {nactivehinges: {new_id_string: 1}}
+        elif nactivehinges not in queried[part_count][nbricks].keys():
+            queried[part_count][nbricks][nactivehinges] = [new_id_string]
+            counts[part_count][nbricks][nactivehinges] = {new_id_string: 1}
         else:
+            # Exists already?
             exists = False
-            # for array in grids[part_count][nbricks][nactivehinges]:
-            #     exists = np.array_equal(array, grid)
-            #     if exists: break
-            for string in grids[part_count][nbricks][nactivehinges]:
+            for string in queried[part_count][nbricks][nactivehinges]:
                 exists = (string == new_id_string)
                 if exists: break
+            # Save?
             if not exists: 
-                #grids[part_count][nbricks][nactivehinges].append(grid)
-                grids[part_count][nbricks][nactivehinges].append(new_id_string)
-                #bodies.append(body)
-                ngrids.append(1)
+                queried[part_count][nbricks][nactivehinges].append(new_id_string)
+                counts[part_count][nbricks][nactivehinges][new_id_string] = 1
             else:
-                ngrids.append(0)
-        # Increase id count
-        if new_id_string not in ids["id"].values:
-            ids = pd.concat([ids, pd.DataFrame([[new_id_string, 1]], columns = ["id", "count"])])
-        else:
-            ids.loc[ids["id"] == new_id_string, "count"] += 1
+                counts[part_count][nbricks][nactivehinges][new_id_string] += 1
+    
+    # ---- Save results
+    with open(f'Parts_{max_part}.json', 'w') as f:
+        json.dump(queried, f)
+    with open(f'Parts_{max_part}_counts.json', 'w') as f:
+        json.dump(counts, f)
+    
+    # ---- Logging
+    print(f"Finished {max_part} parts.")
+                
+if __name__ == "__main__":
+    reps = 20000
+    cpu_count = 8 #os.cpu_count()
+    batches = np.arange(1, 31, 1)
+    with concurrent.futures.ProcessPoolExecutor(max_workers = cpu_count
+                    ) as executor:
+                        futures = [
+                            executor.submit(main, reps, batch, batch) for batch in batches]
 
-        # Stop early
-        if np.cumsum(ngrids)[-1] >= max_solutions[max_parts]:
-            break
 
-    # ---- Dump
-    # Ids
-    new_grids = int(np.cumsum(ngrids)[-1] - old_ngrids)
-    with open(f'{part_count}.json', 'w') as f:
-        json.dump({new_grids: grids[part_count]}, f)
-    # Id counts
-    ids.to_csv(f'idcounts.csv', index = False)
 
-    # ---- Print
-    print("\tNumber of unique bodies: ", new_grids)
-
-plt.plot(np.cumsum(ngrids))
-plt.axis('square')
-plt.show()
+    
         
         
 
