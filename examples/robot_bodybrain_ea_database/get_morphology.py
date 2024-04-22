@@ -9,7 +9,7 @@ experiment_id_start = sys.argv[4]
 pop2start = sys.argv[5]
 os.environ["NEXP"] = sys.argv[6]
 os.environ["NPOP"] = sys.argv[7]
-assert algo in ["GRN", "CPPN"], "ALGORITHM must be either GRN or CPPN"
+assert algo in ["GRN", "GRN_system", "CPPN"], "ALGORITHM must be either GRN, GRN_system or CPPN"
 assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
 assert type(file_name) == str, "FILE_NAME must be a string"
 assert file_name.endswith(".sqlite"), "FILE_NAME must end with sqlite"
