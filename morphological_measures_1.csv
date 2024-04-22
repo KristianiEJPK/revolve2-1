@@ -1,2 +1,0 @@
-bricks,hinges,modules,size,proportion2d,proportionNiels,single_neighbour_brick_ratio,single_neighbour_ratio,double_neighbour_brick_and_active_hinge_ratio,maxrel_llimbs,meanrel_llimbs,stdrel_llimbs,nlimbs,joints,joint_brick_ratio,symmetry_incl1,symmetry_incl2,symmetry_incl3,symmetry_incl4,symmetry_excl1,symmetry_excl2,symmetry_excl3,symmetry_excl4,coverage,branching,surface_area,id_string,count
-0,0,1,0.0333333333333333,1.0,0.0,0.0,0.0,0.0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.1111111111111111,0,1.0,1|,60000
