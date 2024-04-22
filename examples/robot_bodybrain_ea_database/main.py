@@ -413,6 +413,8 @@ def run_experiment(dbengine: Engine) -> None:
         robots = develop_robots(offspring_genotypes)
         offspring_fitnesses, offspring_behavioral_measures = evaluator.evaluate(
             robots)
+        
+        print("Mean of offspring: ", np.mean(offspring_fitnesses), "Max of offspring: ", np.max(offspring_fitnesses))
 
         # Make an intermediate offspring population.
         offspring_population = Population(

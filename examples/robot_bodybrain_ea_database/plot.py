@@ -46,8 +46,7 @@ def main(column, path) -> None:
     first_generation = df.loc[df["generation_index"] == 0, :]
     df = df.loc[(df.loc[:, "generation_index"] % 2) == 0, :]
     df = pandas.concat([first_generation, df])
-    df["generation_index"] = (df.loc[:, "generation_index"] / 2).astype(int).values
-    
+    df["generation_index"] = (df.loc[:, "generation_index"] / 2).astype(int).values    
 
     # Get max and mean fitness per experiment per generation
     agg_per_experiment_per_generation = (

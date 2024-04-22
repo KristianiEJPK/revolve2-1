@@ -26,7 +26,7 @@ class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
     @classmethod
     def random_body(self: object, rng: np.random.Generator) -> BodyGenotypeOrmV2GRN:
         # Set genome size
-        genome_size = 150 + 1
+        genome_size = 150 + 1 + 6
         # Set random genotype
         genotype = [round(rng.uniform(0, 1), 2) for _ in range(genome_size)]
 
@@ -95,12 +95,12 @@ class BodyGenotypeOrmV2GRN(orm.MappedAsDataclass, kw_only=True):
 
         # The first nucleotide is the concentration --> average of the parents
         new_genotype = []
-        for ig in range(0, 1):
+        for ig in range(0, 7):
             new_genotype.append((genotype1[ig] + genotype2[ig])/2)
 
         # Get remaining nucleotides from parents
-        p1 = genotype1[1:]
-        p2 = genotype2[1:]
+        p1 = genotype1[7:]
+        p2 = genotype2[7:]
 
         # Get new genotype
         for parent in [p1, p2]:
