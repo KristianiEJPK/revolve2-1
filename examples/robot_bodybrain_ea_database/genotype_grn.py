@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import multineat
 import numpy as np
+import os
 from base import Base
 
 from revolve2.ci_group.genotypes.cppnwin.modular_robot import BrainGenotypeCpgOrm
-from revolve2.ci_group.genotypes.cppnwin.modular_robot.v2 import BodyGenotypeOrmV2GRN
+if os.environ["ALGORITHM"] == "GRN":
+    from revolve2.ci_group.genotypes.cppnwin.modular_robot.v2 import BodyGenotypeOrmV2GRN
+elif os.environ["ALGORITHM"] in ["GRN_system"]:
+    from revolve2.ci_group.genotypes.cppnwin.modular_robot.v2 import BodyGenotypeOrmV2GRN_system as BodyGenotypeOrmV2GRN
+
 from revolve2.experimentation.database import HasId
 from revolve2.modular_robot import ModularRobot
 

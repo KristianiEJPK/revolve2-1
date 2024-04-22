@@ -60,75 +60,75 @@ def main(column, path) -> None:
     df = pd.concat([first_generation, df])
     df["generation_index"] = (df.loc[:, "generation_index"] / 2).astype(int).values
 
-    # Plot mean fitness per experiment over generations
-    for exp_id in df["experiment_id"].unique():
-        df_exp = df.loc[df["experiment_id"] == exp_id, :]
-        df_exp = df_exp.groupby("generation_index").agg({column: "mean"}).reset_index()
-        plt.plot(df_exp["generation_index"], df_exp[column], label = f"Experiment {exp_id}")
+    # # Plot mean fitness per experiment over generations
+    # for exp_id in df["experiment_id"].unique():
+    #     df_exp = df.loc[df["experiment_id"] == exp_id, :]
+    #     df_exp = df_exp.groupby("generation_index").agg({column: "mean"}).reset_index()
+    #     plt.plot(df_exp["generation_index"], df_exp[column], label = f"Experiment {exp_id}")
     
 
-    # # Get max and mean fitness per experiment per generation
-    # agg_per_experiment_per_generation = (
-    #     df.groupby(["experiment_id", "generation_index"])
-    #     .agg({column: ["max", "mean"]})
-    #     .reset_index()
-    # )
+    # Get max and mean fitness per experiment per generation
+    agg_per_experiment_per_generation = (
+        df.groupby(["experiment_id", "generation_index"])
+        .agg({column: ["max", "mean"]})
+        .reset_index()
+    )
 
-    # # Aggregate over experiments
-    # agg_per_experiment_per_generation.columns = [
-    #     "experiment_id",
-    #     "generation_index",
-    #     f"max_{column}",
-    #     f"mean_{column}",
-    # ]
+    # Aggregate over experiments
+    agg_per_experiment_per_generation.columns = [
+        "experiment_id",
+        "generation_index",
+        f"max_{column}",
+        f"mean_{column}",
+    ]
 
-    # agg_per_generation = (
-    #     agg_per_experiment_per_generation.groupby("generation_index")
-    #     .agg({f"max_{column}": ["mean", "std"], f"mean_{column}": ["mean", "std"]})
-    #     .reset_index()
-    # )
+    agg_per_generation = (
+        agg_per_experiment_per_generation.groupby("generation_index")
+        .agg({f"max_{column}": ["mean", "std"], f"mean_{column}": ["mean", "std"]})
+        .reset_index()
+    )
 
-    # # Set columns
-    # agg_per_generation.columns = [
-    #     "generation_index",
-    #     f"max_{column}_mean",
-    #     f"max_{column}_std",
-    #     f"mean_{column}_mean",
-    #     f"mean_{column}_std", ]
+    # Set columns
+    agg_per_generation.columns = [
+        "generation_index",
+        f"max_{column}_mean",
+        f"max_{column}_std",
+        f"mean_{column}_mean",
+        f"mean_{column}_std", ]
 
-    # plt.figure()
+    plt.figure()
 
-    # # Plot max
-    # plt.plot(
-    #     agg_per_generation["generation_index"],
-    #     agg_per_generation[f"max_{column}_mean"],
-    #     label=f"Max {column}",
-    #     color="b",
-    # )
-    # plt.fill_between(
-    #     agg_per_generation["generation_index"],
-    #     agg_per_generation[f"max_{column}_mean"] - agg_per_generation[f"max_{column}_std"],
-    #     agg_per_generation[f"max_{column}_mean"] + agg_per_generation[f"max_{column}_std"],
-    #     color="b",
-    #     alpha=0.2,
-    # )
+    # Plot max
+    plt.plot(
+        agg_per_generation["generation_index"],
+        agg_per_generation[f"max_{column}_mean"],
+        label=f"Max {column}",
+        color="b",
+    )
+    plt.fill_between(
+        agg_per_generation["generation_index"],
+        agg_per_generation[f"max_{column}_mean"] - agg_per_generation[f"max_{column}_std"],
+        agg_per_generation[f"max_{column}_mean"] + agg_per_generation[f"max_{column}_std"],
+        color="b",
+        alpha=0.2,
+    )
 
-    # # Plot mean
-    # plt.plot(
-    #     agg_per_generation["generation_index"],
-    #     agg_per_generation[f"mean_{column}_mean"],
-    #     label=f"Mean {column}",
-    #     color="r",
-    # )
-    # plt.fill_between(
-    #     agg_per_generation["generation_index"],
-    #     agg_per_generation[f"mean_{column}_mean"]
-    #     - agg_per_generation[f"mean_{column}_std"],
-    #     agg_per_generation[f"mean_{column}_mean"]
-    #     + agg_per_generation[f"mean_{column}_std"],
-    #     color="r",
-    #     alpha=0.2,
-    # )
+    # Plot mean
+    plt.plot(
+        agg_per_generation["generation_index"],
+        agg_per_generation[f"mean_{column}_mean"],
+        label=f"Mean {column}",
+        color="r",
+    )
+    plt.fill_between(
+        agg_per_generation["generation_index"],
+        agg_per_generation[f"mean_{column}_mean"]
+        - agg_per_generation[f"mean_{column}_std"],
+        agg_per_generation[f"mean_{column}_mean"]
+        + agg_per_generation[f"mean_{column}_std"],
+        color="r",
+        alpha=0.2,
+    )
 
     plt.xlabel("Generation Index", fontweight = "bold", size = 16)
     plt.ylabel(column.title(), fontweight = "bold", size = 16)
