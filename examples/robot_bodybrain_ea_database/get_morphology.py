@@ -58,7 +58,7 @@ def select_data(dbengine, experiment_id, min_population_id, max_population_id) -
     with Session(dbengine) as ses:
         rows = ses.execute(
             select(Genotype, Experiment.id.label("experiment_id"), Generation.generation_index,
-                   Individual.id.label("individual_index"))
+                   Individual.id.label("individual_index"), Individual.body_id)
             .join_from(Experiment, Generation, Experiment.id == Generation.experiment_id)
             .join_from(Generation, Population, Generation.population_id == Population.id)
             .join_from(Population, Individual, Population.id == Individual.population_id)
@@ -105,30 +105,6 @@ def main():
             df = pd.DataFrame(dicts)
             logging.info(f"Experiment {exp}: population {pop} done")
             df.to_csv(f"morphological_measures_experiment_{file_name.split('.')[0]}_{exp}_{pop}.csv", index = False)
-
-
-    # Create directory
-    #path = f"C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\Test\\{os.environ['ALGORITHM']}\\Morphologies"
-    # if not os.path.exists(path):
-    #     os.makedirs(path)
-    # import uuid
-    # uuid = uuid.uuid4()
-    #df.to_csv(f"morphological_measures_experiment_{uuid}.csv", index = False)
-    
-# # # Get max and mean fitness per experiment per generation
-# # agg_per_experiment_per_generation = (
-# #     df.groupby(["experiment_id", "generation_index"])
-# #     .agg({column: ["max", "mean"]})
-# #     .reset_index()
-# # )
-
-# # # Aggregate over experiments
-# # agg_per_experiment_per_generation.columns = [
-# #     "experiment_id",
-# #     "generation_index",
-# #     f"max_{column}",
-# #     f"mean_{column}",
-# # ]
 
 if __name__ == "__main__":
     main()

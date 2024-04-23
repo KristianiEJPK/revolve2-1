@@ -1,32 +1,41 @@
 
 import numpy as np
-import os
+#import os
 from revolve2.ci_group.morphological_measures import MorphologicalMeasures
+from develop_from_string import get_body
+from extract_string import extract_string
 
 def get_morphologies(row, ZDIRECTION, CPPNBIAS, CPPNCHAINLENGTH, CPPNEMPTY, MAX_PARTS, MODE_COLLISION, MODE_CORE_MULT, MODE_SLOTS4FACE, 
                      MODE_SLOTS4FACE_ALL, MODE_NOT_VERTICAL):
     # Get body
-    genotype = row[0]
+    #genotype = row[0]
     experiment_id = row[1]
     generation_index = row[2]
     individual_index = row[3]
+    id_string = row[4]
 
-    # Develop body
-    if os.environ["ALGORITHM"] == "CPPN":
-        modular_robot = genotype.develop(zdirection = ZDIRECTION, include_bias = CPPNBIAS,
-                include_chain_length = CPPNCHAINLENGTH, include_empty = CPPNEMPTY,
-                max_parts = MAX_PARTS, mode_collision = MODE_COLLISION,
-                mode_core_mult = MODE_CORE_MULT, mode_slots4face = MODE_SLOTS4FACE,
-                mode_slots4face_all = MODE_SLOTS4FACE_ALL, mode_not_vertical = MODE_NOT_VERTICAL)
-    elif os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]:
-        modular_robot = genotype.develop(include_bias = CPPNBIAS, max_parts = MAX_PARTS, mode_core_mult = MODE_CORE_MULT)
-    else:
-        raise ValueError("ALGORITHM must be either GRN or CPPN")
+    # # Develop body
+    # if os.environ["ALGORITHM"] == "CPPN":
+    #     modular_robot = genotype.develop(zdirection = ZDIRECTION, include_bias = CPPNBIAS,
+    #             include_chain_length = CPPNCHAINLENGTH, include_empty = CPPNEMPTY,
+    #             max_parts = MAX_PARTS, mode_collision = MODE_COLLISION,
+    #             mode_core_mult = MODE_CORE_MULT, mode_slots4face = MODE_SLOTS4FACE,
+    #             mode_slots4face_all = MODE_SLOTS4FACE_ALL, mode_not_vertical = MODE_NOT_VERTICAL, id_string = id_string)
+    # elif os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]:
+    #     modular_robot = genotype.develop(include_bias = CPPNBIAS, max_parts = MAX_PARTS, mode_core_mult = MODE_CORE_MULT,
+    #                                      id_string = id_string)
+    # else:
+    #     raise ValueError("ALGORITHM must be either GRN or CPPN")
+    #body = modular_robot.body
+    max_parts4string, dict_coord = extract_string(id_string)
+    body = get_body(max_parts4string, dict_coord)
 
     # ---- Get morphological measures
-    morphology = MorphologicalMeasures(body = modular_robot.body, brain = np.nan, max_modules = MAX_PARTS)
+    morphology = MorphologicalMeasures(body = body, brain = np.nan, max_modules = MAX_PARTS)
     
+    assert morphology.id_string == id_string, "id_string is not the same"
     id_string = morphology.id_string
+
 
     nbricks = morphology.num_bricks
     nhinges = morphology.num_active_hinges
