@@ -264,6 +264,10 @@ class Individual(HasId, orm.MappedAsDataclass, Generic[TGenotype]):
         def balance(cls) -> orm.Mapped[float]:
             return cls.__behavioral_measures_impl()
         
+        @orm.declared_attr
+        def body_id(cls) -> orm.Mapped[str]:
+            return cls.__behavioral_measures_impl()
+        
         
     
     

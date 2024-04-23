@@ -9,7 +9,7 @@ experiment_id_start = sys.argv[4]
 pop2start = sys.argv[5]
 os.environ["NEXP"] = sys.argv[6]
 os.environ["NPOP"] = sys.argv[7]
-assert algo in ["GRN", "GRN_system", "CPPN"], "ALGORITHM must be either GRN, GRN_system or CPPN"
+assert algo in ["GRN", "GRN_system", "GRN_system_adv", "CPPN"], "ALGORITHM must be either GRN, GRN_system, GRN_system_adv, or CPPN"
 assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
 assert type(file_name) == str, "FILE_NAME must be a string"
 assert file_name.endswith(".sqlite"), "FILE_NAME must end with sqlite"
@@ -24,7 +24,7 @@ os.environ['MAXPARTS'] = str(config.MAX_PARTS)
 
 if os.environ["ALGORITHM"] == "CPPN":
     from genotype import Genotype
-elif os.environ["ALGORITHM"] in ["GRN", "GRN_system"]:
+elif os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]:
     from genotype_grn import Genotype
 else:
     raise ValueError("ALGORITHM must be either GRN or CPPN")

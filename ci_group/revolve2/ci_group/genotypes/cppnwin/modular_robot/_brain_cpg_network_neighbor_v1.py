@@ -47,6 +47,7 @@ class BrainCpgNetworkNeighborV1(ModularRobotBrainCpgNetworkNeighbor):
 
         # Get the grid and core grid position
         grid, core_grid_position, id_string = body.to_grid(ActiveHingeV2, BrickV2)
+        self.id_string = id_string
         
         # Get positions of joints
         if len(active_hinges) > 0:

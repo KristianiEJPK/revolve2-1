@@ -17,7 +17,7 @@ if (writefiles == "True"):
     assert (headless == "True"), "HEADLESS must be True if WRITEFILES is True"
 assert writefiles in ["True", "False"], "WRITEFILES must be either True or False"
 assert writevideos in ["True", "False"], "WRITEVIDEOS must be either True or False"
-assert algo in ["GRN", "GRN_system", "CPPN"], "ALGORITHM must be either GRN, 'GRN_system' or CPPN"
+assert algo in ["GRN", "GRN_system", "GRN_system_adv", "CPPN"], "ALGORITHM must be either GRN, 'GRN_system' or CPPN"
 assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
 assert type(file_name) == str, "FILE_NAME must be a string"
 assert file_name.endswith(".sqlite"), "FILE_NAME must end with sqlite"
@@ -40,7 +40,7 @@ os.environ['MAXPARTS'] = str(config.MAX_PARTS)
 # Import the genotype
 if os.environ["ALGORITHM"] == "CPPN":
     from genotype import Genotype
-elif os.environ["ALGORITHM"] in ["GRN", "GRN_system"]:
+elif os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]:
     from genotype_grn import Genotype
 else:
     raise ValueError("ALGORITHM must be either GRN or CPPN")
@@ -68,7 +68,7 @@ def main() -> None:
     with Session(dbengine) as ses:
         rows = ses.execute(
             select(Genotype, Individual.fitness, Individual.energy_used, Individual.efficiency,
-                   Individual.x_distance, Individual.y_distance)
+                   Individual.x_distance, Individual.y_distance, Individual.body_id)
             .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
             .order_by(Individual.fitness.desc()).limit(1000)
         ).all()
@@ -80,6 +80,7 @@ def main() -> None:
         efficiency = row[3]
         x_distance = row[4]
         y_distance = row[5]
+        body_id = row[6]
 
         if os.environ["ALGORITHM"] == "CPPN":
             modular_robot = genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
@@ -87,7 +88,7 @@ def main() -> None:
                 max_parts = config.MAX_PARTS, mode_collision = config.MODE_COLLISION,
                 mode_core_mult = config.MODE_CORE_MULT, mode_slots4face = config.MODE_SLOTS4FACE,
                 mode_slots4face_all = config.MODE_SLOTS4FACE_ALL, mode_not_vertical = config.MODE_NOT_VERTICAL)
-        elif os.environ["ALGORITHM"] in ["GRN", "GRN_system"]:
+        elif os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]:
             modular_robot = genotype.develop(include_bias = config.CPPNBIAS, max_parts = config.MAX_PARTS, mode_core_mult = config.MODE_CORE_MULT)
         else:
             raise ValueError("ALGORITHM must be either GRN or CPPN")
@@ -96,6 +97,7 @@ def main() -> None:
         logging.info(f"Efficiency: {efficiency}")
         logging.info(f"X distance: {x_distance}")
         logging.info(f"Y distance: {y_distance}")
+        logging.info(f"Body ID: {body_id}")
 
 
         # Create the evaluator.
@@ -105,7 +107,7 @@ def main() -> None:
                               writefiles = writefiles, record = writevideos, video_path = os.getcwd() + f"/MuJoCo_videos/MuJoCo_{irow}")
 
         # Show the robot.
-        fitnesses, behavioral_measures = evaluator.evaluate([modular_robot])
+        fitnesses, behavioral_measures, ids = evaluator.evaluate([modular_robot])
         logging.info(f"Fitness Measured: {fitnesses[0]}")
         logging.info(f"X_distance Measured: {behavioral_measures[0]['x_distance']}")
         print("-----------------------------------------------")

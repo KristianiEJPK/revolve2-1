@@ -12,7 +12,9 @@ if os.environ["ALGORITHM"] == "GRN":
     from revolve2.ci_group.genotypes.cppnwin.modular_robot.v2 import BodyGenotypeOrmV2GRN
 elif os.environ["ALGORITHM"] in ["GRN_system"]:
     from revolve2.ci_group.genotypes.cppnwin.modular_robot.v2 import BodyGenotypeOrmV2GRN_system as BodyGenotypeOrmV2GRN
-
+elif os.environ["ALGORITHM"] in ["GRN_system_adv"]:
+    from revolve2.ci_group.genotypes.cppnwin.modular_robot.v2 import BodyGenotypeOrmV2GRN_system_adv as BodyGenotypeOrmV2GRN
+    
 from revolve2.experimentation.database import HasId
 from revolve2.modular_robot import ModularRobot
 

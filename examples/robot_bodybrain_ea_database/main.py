@@ -5,7 +5,7 @@ import os
 algo = sys.argv[1]
 mode = sys.argv[2]
 file_name = sys.argv[3]
-assert algo in ["GRN", "GRN_system", "CPPN"], "ALGORITHM must be either GRN or CPPN"
+assert algo in ["GRN", "GRN_system", "GRN_system_adv", "CPPN"], "ALGORITHM must be either GRN, GRN_system, GRN_sytem_adv, or CPPN"
 assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
 assert type(file_name) == str, "FILE_NAME must be a string"
 assert file_name.endswith(".sqlite"), "FILE_NAME must end with sqlite"
@@ -24,7 +24,7 @@ os.environ["elaborate"] = sys.argv[4].title()
 # Get genotype module
 if os.environ["ALGORITHM"] == "CPPN":
     from genotype import Genotype
-elif os.environ["ALGORITHM"] in ["GRN", "GRN_system"]:
+elif os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]:
     from genotype_grn import Genotype
 else:
     raise ValueError("ALGORITHM must be either GRN or CPPN")
@@ -157,7 +157,7 @@ def select_survivors(
                 efficiency_median = original_population.individuals[i].efficiency_median, efficiency_75 = original_population.individuals[i].efficiency_75,
                 efficiency_max = original_population.individuals[i].efficiency_max, efficiency_std = original_population.individuals[i].efficiency_std,
                 
-                balance = original_population.individuals[i].balance
+                balance = original_population.individuals[i].balance, body_id = original_population.individuals[i].body_id
             )
             for i in original_survivors
         ]
@@ -197,7 +197,7 @@ def select_survivors(
                 efficiency_median = offspring_population.individuals[i].efficiency_median, efficiency_75 = offspring_population.individuals[i].efficiency_75,
                 efficiency_max = offspring_population.individuals[i].efficiency_max, efficiency_std = offspring_population.individuals[i].efficiency_std,
 
-                balance = offspring_population.individuals[i].balance
+                balance = offspring_population.individuals[i].balance, body_id = offspring_population.individuals[i].body_id
             )
             for i in offspring_survivors
         ]
@@ -233,7 +233,7 @@ def develop_robots(offspring_genotypes: list[Genotype]):
     Output:
         The developed robots.
     """
-    if os.environ["ALGORITHM"] in ["GRN", "GRN_system"]:
+    if os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]:
         if config.NUM_SIMULATORS != 1:
             with concurrent.futures.ProcessPoolExecutor(max_workers = config.NUM_SIMULATORS
                     ) as executor:
@@ -332,7 +332,7 @@ def run_experiment(dbengine: Engine, iexp: int) -> None:
                 )
                 for _ in range(config.POPULATION_SIZE)
             ]
-        elif os.environ["ALGORITHM"] in ["GRN", "GRN_system"]:
+        elif os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]:
             initial_genotypes = [
                 Genotype.random(
                     innov_db_brain = innov_db_brain,
@@ -345,7 +345,7 @@ def run_experiment(dbengine: Engine, iexp: int) -> None:
         # Evaluate the initial population.
         logging.info("Evaluating initial population.")
         robots = develop_robots(initial_genotypes)
-        initial_fitnesses, behavioral_measures = evaluator.evaluate(robots)
+        initial_fitnesses, behavioral_measures, initial_ids = evaluator.evaluate(robots)
 
         # Create a population of individuals, combining genotype with fitness.
         population = Population(
@@ -383,10 +383,10 @@ def run_experiment(dbengine: Engine, iexp: int) -> None:
                     efficiency_median = behave_measure["efficiency_median"], efficiency_75 = behave_measure["efficiency_75"],
                     efficiency_max = behave_measure["efficiency_max"], efficiency_std = behave_measure["efficiency_std"],
                     
-                    balance = behave_measure["balance"]
+                    balance = behave_measure["balance"], body_id = body_id 
                     )
-                for genotype, fitness, behave_measure in zip(
-                    initial_genotypes, initial_fitnesses, behavioral_measures, strict=True
+                for genotype, fitness, behave_measure, body_id in zip(
+                    initial_genotypes, initial_fitnesses, behavioral_measures, initial_ids, strict=True
                 )
             ]
         )
@@ -443,7 +443,7 @@ def run_experiment(dbengine: Engine, iexp: int) -> None:
                 ).mutate(innov_db_body, innov_db_brain, rng, config.MUTATION_PROBABILITY)
                 for parent1_i, parent2_i in parents
             ]
-        elif os.environ["ALGORITHM"] in ["GRN", "GRN_system"]:
+        elif os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]:
             offspring_genotypes = [
                 Genotype.crossover(
                     population.individuals[parent1_i].genotype,
@@ -456,7 +456,7 @@ def run_experiment(dbengine: Engine, iexp: int) -> None:
             raise ValueError("ALGORITHM must be either GRN or CPPN")
         # Evaluate the offspring.
         robots = develop_robots(offspring_genotypes)
-        offspring_fitnesses, offspring_behavioral_measures = evaluator.evaluate(
+        offspring_fitnesses, offspring_behavioral_measures, offspring_ids = evaluator.evaluate(
             robots)
 
         # Make an intermediate offspring population.
@@ -495,8 +495,8 @@ def run_experiment(dbengine: Engine, iexp: int) -> None:
                     efficiency_median = behave_measure["efficiency_median"], efficiency_75 = behave_measure["efficiency_75"],
                     efficiency_max = behave_measure["efficiency_max"], efficiency_std = behave_measure["efficiency_std"],
                     
-                    balance = behave_measure["balance"])
-                for genotype, fitness, behave_measure in zip(offspring_genotypes, offspring_fitnesses, offspring_behavioral_measures)
+                    balance = behave_measure["balance"], body_id = body_id)
+                for genotype, fitness, behave_measure, body_id in zip(offspring_genotypes, offspring_fitnesses, offspring_behavioral_measures, offspring_ids)
             ]
         )
 

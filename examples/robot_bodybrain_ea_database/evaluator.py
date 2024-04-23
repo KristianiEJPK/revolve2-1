@@ -115,11 +115,11 @@ class Evaluator:
 
 
         # ---- Get Morphological Measures
-        behavioral_measures = []
+        behavioral_measures, ids = [], []
         for irobot, robot in enumerate(robots):
             # ---- Morphological measures
             #morphological_measures = MorphologicalMeasures(robot.body, robot.brain, int(os.environ["MAXPARTS"]))
-
+            ids.append(robot.brain.id_string)
             # ---- Behavioral Measures
             # States
             behave = BehavioralMeasures(scene_states[irobot], robot).get_measures()
@@ -149,4 +149,4 @@ class Evaluator:
                 for behavioral_measure in behavioral_measures
             ]
         
-        return fitnesses, behavioral_measures
+        return fitnesses, behavioral_measures, ids

@@ -18,7 +18,7 @@ def get_morphologies(row, ZDIRECTION, CPPNBIAS, CPPNCHAINLENGTH, CPPNEMPTY, MAX_
                 max_parts = MAX_PARTS, mode_collision = MODE_COLLISION,
                 mode_core_mult = MODE_CORE_MULT, mode_slots4face = MODE_SLOTS4FACE,
                 mode_slots4face_all = MODE_SLOTS4FACE_ALL, mode_not_vertical = MODE_NOT_VERTICAL)
-    elif os.environ["ALGORITHM"] in ["GRN", "GRN_system"]:
+    elif os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]:
         modular_robot = genotype.develop(include_bias = CPPNBIAS, max_parts = MAX_PARTS, mode_core_mult = MODE_CORE_MULT)
     else:
         raise ValueError("ALGORITHM must be either GRN or CPPN")

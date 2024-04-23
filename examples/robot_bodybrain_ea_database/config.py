@@ -17,7 +17,7 @@ NPARENTS = 2
 PARENT_TOURNAMENT_SIZE = 4
 SURVIVOR_TOURNAMENT_SIZE = 4
 
-if os.environ["ALGORITHM"] in ["GRN", "GRN_system"]:
+if os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]:
     CROSSOVER_PROBABILITY = 1
     MUTATION_PROBABILITY = 0.9
 elif os.environ["ALGORITHM"] == "CPPN":
@@ -61,7 +61,7 @@ assert NPARENTS == 2, "NPARENTS must be 2"
 assert PARENT_TOURNAMENT_SIZE == 4, "PARENT_TOURNAMENT_SIZE must be 4"
 assert SURVIVOR_TOURNAMENT_SIZE == 4, "SURVIVOR_TOURNAMENT_SIZE must be 4"
 
-if os.environ["ALGORITHM"] in ["GRN", "GRN_system"]:
+if os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]:
     assert MUTATION_PROBABILITY == 0.9, "MUTATION_PROBABILITY must be 0.9 if ALGORITHM is GRN"
     assert CROSSOVER_PROBABILITY == 1, "CROSSOVER_PROBABILITY must be 1 if ALGORITHM is GRN"
 elif os.environ["ALGORITHM"]== "CPPN":
@@ -71,7 +71,7 @@ else:
     raise ValueError("ALGORITHM must be either GRN or CPPN")
 
 
-if MODE_CORE_MULT and (os.environ["ALGORITHM"] in ["GRN", "GRN_system"]):
+if MODE_CORE_MULT and (os.environ["ALGORITHM"] in ["GRN", "GRN_system", "GRN_system_adv"]):
     pass
     #print("For GRN MODE_CORE_MULT only will provide a 3 x 3 grid during querying. No additional attachments!")
 else:

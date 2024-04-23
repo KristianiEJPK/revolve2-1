@@ -9,7 +9,7 @@ mode = sys.argv[2]
 file_name = "nan.sqlite"
 folder_path = sys.argv[3]
 
-assert algo in ["GRN", "CPPN"], "ALGORITHM must be either GRN or CPPN"
+assert algo in ["GRN", "GRN_system", "GRN_system_adv", "CPPN"], "ALGORITHM must be either GRN, GRN_system or CPPN"
 assert mode in ["random search", "evolution"], "MODE must be either random search or evolution"
 assert type(file_name) == str, "FILE_NAME must be a string"
 assert file_name.endswith(".sqlite"), "FILE_NAME must end with sqlite"
