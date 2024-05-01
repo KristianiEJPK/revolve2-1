@@ -49,6 +49,8 @@ def main(column, path) -> None:
             # Get pandas data
             df_sub = select_data(dbengine, column)
             df_sub["experiment_id"] = ((df_sub["experiment_id"] - df_sub["experiment_id"].min()) + n_exp).astype(int).values
+            print(df_sub["experiment_id"].unique())
+            print(df_sub["experiment_id"].shape)
             n_exp = df_sub["experiment_id"].max() + 1
 
             # Concat data
@@ -138,6 +140,20 @@ def main(column, path) -> None:
     plt.tight_layout()
     plt.savefig(path + f"//{column}.png")
     plt.show()
+
+    if column == "fitness":
+        for exp_id in df["experiment_id"].unique():
+            df_exp = df.loc[df["experiment_id"] == exp_id, :]
+            df_exp = df_exp.groupby("generation_index").agg({column: "mean"}).reset_index()
+            plt.plot(df_exp["generation_index"], df_exp[column], label = f"Experiment {exp_id}")
+        plt.xlabel("Generation Index", fontweight = "bold", size = 16)
+        plt.ylabel(column.title(), fontweight = "bold", size = 16)
+        plt.title(f"{column.title()}", fontweight = "bold", size = 16)
+        plt.legend()
+        plt.grid()
+        plt.tight_layout()
+        plt.savefig(path + f"//{column}_experiment.png")
+        plt.show()
 
 
 def select_data(dbengine, column: str) -> pd.DataFrame:
