@@ -66,7 +66,7 @@ def simulate_scene(
     data = mujoco.MjData(model)
 
     # Set fps and video step
-    videostep = 1 / record_settings.fps
+    videostep = 1 / 60#record_settings.fps
 
     # Initialize variables
     last_control_time = 0.0
