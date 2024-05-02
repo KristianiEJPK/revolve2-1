@@ -21,7 +21,7 @@ import os
 import sys
 
 # Settings
-fps = 24
+fps = 60
 video_directory = os.getcwd()
 pathpkl = "C:\\Users\\niels\\Downloads\\PKL"
 pathxml = "C:\\Users\\niels\\Downloads\\XML"

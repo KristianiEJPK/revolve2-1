@@ -47,7 +47,11 @@ else:
 
 # Import other modules
 from evaluator import Evaluator
+from experiment import Experiment
+from generation import Generation
 from individual import Individual
+from population import Population
+
 import shutil
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -69,7 +73,12 @@ def main() -> None:
         rows = ses.execute(
             select(Genotype, Individual.fitness, Individual.energy_used, Individual.efficiency,
                    Individual.x_distance, Individual.y_distance, Individual.body_id)
-            .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
+            
+            .join_from(Experiment, Generation, Experiment.id == Generation.experiment_id)
+            .join_from(Generation, Population, Generation.population_id == Population.id)
+            .join_from(Population, Individual, Population.id == Individual.population_id)
+            .join_from(Individual, Genotype, Individual.genotype_id == Genotype.id)
+            .where(Experiment.id.label("experiment_id") == int(sys.argv[7]))
             .order_by(Individual.fitness.desc()).limit(1000)
         ).all()
     
