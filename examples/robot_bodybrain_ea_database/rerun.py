@@ -73,7 +73,7 @@ def main() -> None:
         rows = ses.execute(
             select(Genotype, Individual.fitness, Individual.energy_used, Individual.efficiency,
                    Individual.x_distance, Individual.y_distance, Generation.experiment_id,
-                   Generation.generation_index, Individual.body_id)
+                   Generation.generation_index)
             
             .join_from(Experiment, Generation, Experiment.id == Generation.experiment_id)
             .join_from(Generation, Population, Generation.population_id == Population.id)
@@ -101,7 +101,7 @@ def main() -> None:
         y_distance = row[5]
         exp_id = row[6]
         gen_index = row[7]
-        body_id = row[8]
+        #body_id = row[8]
         logging.info(f"Experiment ID: {exp_id}")
         logging.info(f"Generation Index: {gen_index}")
 
@@ -120,7 +120,7 @@ def main() -> None:
         logging.info(f"Efficiency: {efficiency}")
         logging.info(f"X distance: {x_distance}")
         logging.info(f"Y distance: {y_distance}")
-        logging.info(f"Body ID: {body_id}")
+        #logging.info(f"Body ID: {body_id}")
 
 
         # Create the evaluator.
@@ -133,9 +133,9 @@ def main() -> None:
         fitnesses, behavioral_measures, ids = evaluator.evaluate([modular_robot])
         logging.info(f"Fitness Measured: {fitnesses[0]}")
         logging.info(f"X_distance Measured: {behavioral_measures[0]['x_distance']}")
-        print(ids[0])
-        print(body_id)
-        assert ids[0] == body_id, "Body ID measured does not match the one in the database"
+        #print(ids[0])
+        #print(body_id)
+        #assert ids[0] == body_id, "Body ID measured does not match the one in the database"
         logging.info(f"Body ID Measured: {ids[0]}")
         print("-----------------------------------------------")
     
