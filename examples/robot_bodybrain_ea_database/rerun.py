@@ -72,7 +72,7 @@ def main() -> None:
     with Session(dbengine) as ses:
         rows = ses.execute(
             select(Genotype, Individual.fitness, Individual.energy_used, Individual.efficiency,
-                   Individual.x_distance, Individual.y_distance, Individual.body_id)
+                   Individual.x_distance, Individual.y_distance)
             
             .join_from(Experiment, Generation, Experiment.id == Generation.experiment_id)
             .join_from(Generation, Population, Generation.population_id == Population.id)
@@ -80,7 +80,7 @@ def main() -> None:
             .join_from(Individual, Genotype, Individual.genotype_id == Genotype.id)
             .where(Experiment.id.label("experiment_id") == int(sys.argv[7]))
             .order_by(Individual.fitness.desc()).limit(1000)
-        ).all()
+        ).all() # Individual.body_id
     
     for irow, row in enumerate(rows[0:1]):
         genotype = row[0]
@@ -89,7 +89,7 @@ def main() -> None:
         efficiency = row[3]
         x_distance = row[4]
         y_distance = row[5]
-        body_id = row[6]
+        #body_id = row[6]
 
         if os.environ["ALGORITHM"] == "CPPN":
             modular_robot = genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
@@ -106,7 +106,7 @@ def main() -> None:
         logging.info(f"Efficiency: {efficiency}")
         logging.info(f"X distance: {x_distance}")
         logging.info(f"Y distance: {y_distance}")
-        logging.info(f"Body ID: {body_id}")
+        #logging.info(f"Body ID: {body_id}")
 
 
         # Create the evaluator.
