@@ -49,7 +49,11 @@ def main(column, path) -> None:
             # Get pandas data
             df_sub = select_data(dbengine, column)
             df_sub["experiment_id"] = ((df_sub["experiment_id"] - df_sub["experiment_id"].min()) + n_exp).astype(int).values
-            print(df_sub["experiment_id"].unique())
+            # Print ids and max fitness
+            ids = df_sub["experiment_id"].unique()
+            for id in ids:
+                print(f"Experiment {id}: {df_sub.loc[df_sub['experiment_id'] == id, column].max()}")
+            
             print(df_sub["experiment_id"].shape)
             n_exp = df_sub["experiment_id"].max() + 1
 

@@ -72,7 +72,8 @@ def main() -> None:
     with Session(dbengine) as ses:
         rows = ses.execute(
             select(Genotype, Individual.fitness, Individual.energy_used, Individual.efficiency,
-                   Individual.x_distance, Individual.y_distance, Generation.experiment_id)
+                   Individual.x_distance, Individual.y_distance, Generation.experiment_id,
+                   Generation.generation_index, Individual.body_id)
             
             .join_from(Experiment, Generation, Experiment.id == Generation.experiment_id)
             .join_from(Generation, Population, Generation.population_id == Population.id)
@@ -80,20 +81,29 @@ def main() -> None:
             .join_from(Individual, Genotype, Individual.genotype_id == Genotype.id)
             .where(Experiment.id.label("experiment_id") == int(sys.argv[7]))
             .order_by(Individual.fitness.desc()).limit(1000)
-        ).all() # Individual.body_id
-        
+        ).all()
     
+    # highest = 0
+    # for irow, row in enumerate(rows):
+    #     if row[1] >= highest:
+    #         highest = row[1]
+    #         highest_index = irow
+    #         print(f"Row {irow}: {row[1]} - {row[7]}")
+    #         if (irow != 0) and (row[7] % 2 != 0):
+    #             break
+
     for irow, row in enumerate(rows[0:1]):
         genotype = row[0]
-        print(genotype)
         fitness = row[1]
         energy_used = row[2]
         efficiency = row[3]
         x_distance = row[4]
         y_distance = row[5]
         exp_id = row[6]
-        #body_id = row[6]
-        print(exp_id)
+        gen_index = row[7]
+        body_id = row[8]
+        logging.info(f"Experiment ID: {exp_id}")
+        logging.info(f"Generation Index: {gen_index}")
 
         if os.environ["ALGORITHM"] == "CPPN":
             modular_robot = genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
@@ -110,7 +120,7 @@ def main() -> None:
         logging.info(f"Efficiency: {efficiency}")
         logging.info(f"X distance: {x_distance}")
         logging.info(f"Y distance: {y_distance}")
-        #logging.info(f"Body ID: {body_id}")
+        logging.info(f"Body ID: {body_id}")
 
 
         # Create the evaluator.
@@ -123,6 +133,9 @@ def main() -> None:
         fitnesses, behavioral_measures, ids = evaluator.evaluate([modular_robot])
         logging.info(f"Fitness Measured: {fitnesses[0]}")
         logging.info(f"X_distance Measured: {behavioral_measures[0]['x_distance']}")
+        print(ids[0])
+        print(body_id)
+        assert ids[0] == body_id, "Body ID measured does not match the one in the database"
         logging.info(f"Body ID Measured: {ids[0]}")
         print("-----------------------------------------------")
     

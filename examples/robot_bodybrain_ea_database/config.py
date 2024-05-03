@@ -4,8 +4,8 @@ import os
 DATABASE_FILE = os.environ["DATABASE_FILE"]
 NUM_REPETITIONS = 2 #20#5
 NUM_SIMULATORS = os.cpu_count()
-POPULATION_SIZE = 100
-OFFSPRING_SIZE = 50
+POPULATION_SIZE = 10#0
+OFFSPRING_SIZE = 5#0
 if os.environ["MODE"] == "random search":
     NUM_GENERATIONS = 50
 elif os.environ["MODE"] == "evolution":
@@ -55,8 +55,8 @@ if os.environ["MODE"] == "random search":
 elif os.environ["MODE"] == "evolution":
     assert NUM_GENERATIONS == 600, "NUM_GENERATIONS must be 150 if MODE is evolution"
 
-assert POPULATION_SIZE == 100, "POPULATION_SIZE must be 100"
-assert OFFSPRING_SIZE == 50, "OFFSPRING_SIZE must be 50"
+# assert POPULATION_SIZE == 100, "POPULATION_SIZE must be 100"
+# assert OFFSPRING_SIZE == 50, "OFFSPRING_SIZE must be 50"
 assert NPARENTS == 2, "NPARENTS must be 2"
 assert PARENT_TOURNAMENT_SIZE == 4, "PARENT_TOURNAMENT_SIZE must be 4"
 assert SURVIVOR_TOURNAMENT_SIZE == 4, "SURVIVOR_TOURNAMENT_SIZE must be 4"

@@ -65,6 +65,12 @@ def develop(
         The createD body."""
     # ---- Initialize
     rng = random.Random(querying_seed) # Random number generator
+    if type(querying_seed) == bytes:
+        querying_seed = np.frombuffer(querying_seed, dtype=np.uint64)[0]
+    else:
+        querying_seed = np.uint64(querying_seed).tobytes()
+    
+    #print(querying_seed)
     collision = False # If the body has collided with itself
     part_count = 0 # Number of body parts
     to_explore = [] # The modules which can be explored for adding more modules. Each item is a module's specific attachment face

@@ -411,6 +411,8 @@ def run_experiment(dbengine: Engine, iexp: int) -> None:
             assert idx_max_gen % 2 == 0, "The generation index must be even"
         except:
              idx_max_gen = int(idx_max_gen - 1)
+        
+
         # --- Get maximum generation, population
         population = query[idx_max_gen].population
         generation = query[idx_max_gen]
