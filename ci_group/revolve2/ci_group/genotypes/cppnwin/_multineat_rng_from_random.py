@@ -15,5 +15,6 @@ def multineat_rng_from_random(rng: np.random.Generator) -> multineat.RNG:
     """
     # Create a multineat rng and seed it with the numpy rng state
     multineat_rng = multineat.RNG()
-    multineat_rng.Seed(rng.integers(0, 2**31))
+    seed = rng.integers(0, 2**31)
+    multineat_rng.Seed(seed)
     return multineat_rng
