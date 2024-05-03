@@ -72,7 +72,7 @@ def main() -> None:
     with Session(dbengine) as ses:
         rows = ses.execute(
             select(Genotype, Individual.fitness, Individual.energy_used, Individual.efficiency,
-                   Individual.x_distance, Individual.y_distance)
+                   Individual.x_distance, Individual.y_distance, Generation.experiment_id)
             
             .join_from(Experiment, Generation, Experiment.id == Generation.experiment_id)
             .join_from(Generation, Population, Generation.population_id == Population.id)
@@ -81,15 +81,19 @@ def main() -> None:
             .where(Experiment.id.label("experiment_id") == int(sys.argv[7]))
             .order_by(Individual.fitness.desc()).limit(1000)
         ).all() # Individual.body_id
+        
     
     for irow, row in enumerate(rows[0:1]):
         genotype = row[0]
+        print(genotype)
         fitness = row[1]
         energy_used = row[2]
         efficiency = row[3]
         x_distance = row[4]
         y_distance = row[5]
+        exp_id = row[6]
         #body_id = row[6]
+        print(exp_id)
 
         if os.environ["ALGORITHM"] == "CPPN":
             modular_robot = genotype.develop(zdirection = config.ZDIRECTION, include_bias = config.CPPNBIAS,
@@ -119,6 +123,7 @@ def main() -> None:
         fitnesses, behavioral_measures, ids = evaluator.evaluate([modular_robot])
         logging.info(f"Fitness Measured: {fitnesses[0]}")
         logging.info(f"X_distance Measured: {behavioral_measures[0]['x_distance']}")
+        logging.info(f"Body ID Measured: {ids[0]}")
         print("-----------------------------------------------")
     
 if __name__ == "__main__":
