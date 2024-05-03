@@ -70,7 +70,7 @@ def develop(
     else:
         querying_seed = np.uint64(querying_seed).tobytes()
     
-    #print(querying_seed)
+    print(querying_seed)
     collision = False # If the body has collided with itself
     part_count = 0 # Number of body parts
     to_explore = [] # The modules which can be explored for adding more modules. Each item is a module's specific attachment face
