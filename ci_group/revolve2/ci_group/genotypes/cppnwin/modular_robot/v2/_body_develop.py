@@ -65,8 +65,6 @@ def develop(
         The createD body."""
     # ---- Initialize
     rng = random.Random(querying_seed) # Random number generator
-    if type(querying_seed) == bytes:
-        querying_seed = np.frombuffer(querying_seed, dtype=np.uint64)[0]
         
     collision = False # If the body has collided with itself
     part_count = 0 # Number of body parts

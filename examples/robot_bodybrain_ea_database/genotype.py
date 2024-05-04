@@ -83,11 +83,16 @@ class Genotype(Base, HasId, BodyGenotypeOrmV2, BrainGenotypeCpgOrm, BodyMappingS
         random_number = rng.uniform(0, 1)
 
         if random_number > mutation_prob:
+            self.mapping_seed = np.frombuffer(self.mapping_seed, dtype=np.uint64)[0]
             return self
         else:
             # Mutate body and brain
             body = self.mutate_body(innov_db = innov_db_body, rng = rng)
             brain = self.mutate_brain(innov_db = innov_db_brain, rng = rng)
+
+            # Convert mapping seed to integer
+            if type(self.mapping_seed) == bytes:
+                self.mapping_seed = np.frombuffer(self.mapping_seed, dtype=np.uint64)[0]
 
             return Genotype(body = body.body, brain = brain.brain, mapping_seed = self.mapping_seed)
 
