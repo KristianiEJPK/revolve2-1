@@ -46,6 +46,10 @@ class DevelopGRN():
 
     def __init__(self, max_modules, mode_core_mult, genotype):
         # Initialize
+        self.store_gradients = False # Store gradients or not --> only for analysis, makes it slow
+        self.store_location = [] # Store location of the modules --> only for analysis, makes it slow
+        self.store_concentrations = {} # Store concentrations of the modules --> only for analysis, makes it slow
+
         self.max_modules = max_modules # Maximum number of modules
         self.genotype = genotype # Genotype
         self.mode_core_mult = mode_core_mult # Mode core mult --> grid 3 x 3
@@ -113,6 +117,15 @@ class DevelopGRN():
         # plt.yticks(np.arange(0, self.grid.shape[1], 1))
         # plt.grid(True, which='both')
         # plt.show()
+
+        # Store concentrations
+        if self.store_gradients == True:
+            # Save locations
+            np.savetxt('locations.csv', self.store_location, delimiter = ',')
+            # Save concentrations
+            for TF in self.store_concentrations.keys():
+                # Write to file
+                np.savetxt('concentrations_GRN_' + TF + '.csv', self.store_concentrations[TF], delimiter = ',')
 
         return self.phenotype_body
 
@@ -226,6 +239,16 @@ class DevelopGRN():
         # Append first cell
         self.cells.append(first_cell)
 
+        # Store concentrations?
+        if self.store_gradients == True:
+            for tf in ["TF1", "TF2", "TF3", "TF4", "TF5"]:
+                array2store = np.zeros(self.diffusion_sites_qt * self.max_modules)
+                if tf in first_cell.transcription_factors.keys():
+                    array2store[0:self.diffusion_sites_qt] = first_cell.transcription_factors[tf]
+                else:
+                    array2store[0:self.diffusion_sites_qt] = [0] * self.diffusion_sites_qt
+                self.store_concentrations[tf] = array2store.reshape((-1, 1))
+
         # Develop a module
         first_cell.developed_module = self.place_head(first_cell)
 
@@ -289,6 +312,13 @@ class DevelopGRN():
                             orientation, (0, 0), CoreV2.FRONT, new_cell, 
                             [None, None, None, None], None, None, 
                             forwards, Vector3([0, 0, 1]), faces)
+        
+        # Store location?
+        if self.store_gradients == True:
+            # Get directions
+            for slot4analysis, coords4analysis in {2: (-1, 0), 3: (0, -1), 1: (0, 1), 0: (1, 0)}.items():
+                self.store_location.append([0, 0, slot4analysis,
+                                            coords4analysis[0], coords4analysis[1]])
 
         return core_module
 
@@ -297,7 +327,6 @@ class DevelopGRN():
             Grows the embryo."""
         # For all development steps
         for t in range(0, self.dev_steps):
-
             # Develops cells in order of age --> oldest first
             for idxc in range(0, len(self.cells)):
                 cell = self.cells[idxc]
@@ -316,6 +345,21 @@ class DevelopGRN():
                 # Decay transcription factors
                 for tf in cell.transcription_factors:
                     self.decay(tf, cell)
+
+                # Store concentrations?
+                if self.store_gradients == True:
+                    for tf in ["TF1", "TF2", "TF3", "TF4", "TF5"]:
+                        array2store = np.zeros(self.diffusion_sites_qt * self.max_modules)
+                        for icell, cell in enumerate(self.cells):
+                            lwb, ub = icell * self.diffusion_sites_qt, (icell + 1) * self.diffusion_sites_qt
+                            if tf in cell.transcription_factors.keys():
+                                array2store[lwb:ub] = cell.transcription_factors[tf]
+                            else:
+                                array2store[lwb:ub] = [0] * self.diffusion_sites_qt
+                        # Store concentrations
+                        array2store = array2store.reshape((-1, 1))
+                        self.store_concentrations[tf] = np.concatenate((self.store_concentrations[tf], 
+                                                    array2store), axis = 1)
                 
                 # Early stopping
                 if self.quantity_modules >= self.max_modules:
@@ -355,7 +399,7 @@ class DevelopGRN():
             if cell.transcription_factors[tf][ds] >= self.intra_diffusion_rate:
                 cell.transcription_factors[tf][ds] -= self.intra_diffusion_rate
                 cell.transcription_factors[tf][ds_left] += self.intra_diffusion_rate
-    
+        
     def inter_diffusion(self, tf, cell):
         """Goal: Performs inter diffusion of a transcription factor between cells."""
         # For each diffusion site
@@ -514,6 +558,13 @@ class DevelopGRN():
                     # elif type(module2add.module) == CoreV2:
                     #     self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 1
 
+                    # Store location?
+                    if self.store_gradients == True:
+                        # Get directions
+                        self.store_location.append([cell.developed_module.substrate_coordinates[0],
+                                                    cell.developed_module.substrate_coordinates[1], 
+                                                    slot4coordinates,
+                                                    potential_module_coord[0], potential_module_coord[1]])
 
     def decay(self, tf, cell):
         """Goal:

@@ -45,6 +45,8 @@ class DevelopGRN():
     """
     def __init__(self, max_modules, mode_core_mult, genotype):
         # Initialize
+        self.store_gradients = True # Store gradients or not --> only for analysis, makes it slow
+        self.store_location = [] # Store location of the modules --> only for analysis, makes it slow
         self.max_modules = max_modules # Maximum number of modules
         self.genotype = genotype # Genotype
 
@@ -178,11 +180,18 @@ class DevelopGRN():
         -----------------------------------------------------------------------------------------------
         Output:
             The updated matrix."""
-        for index in indices:
-            if self.matrices[TF][4][index, 0] != 0:
-                self.matrices[TF][4][index, 0] += amount
-            else:
-                self.matrices[TF][4][index, 0] = amount
+        if self.store_gradients == False:
+            for index in indices:
+                if self.matrices[TF][4][index, 0] != 0:
+                    self.matrices[TF][4][index, 0] += amount
+                else:
+                    self.matrices[TF][4][index, 0] = amount
+        elif self.store_gradients == True:
+            for index in indices:
+                if self.matrices[TF][4][index, -1] != 0:
+                    self.matrices[TF][4][index, -1] += amount
+                else:
+                    self.matrices[TF][4][index, -1] = amount
         
     def set_diagonal(self, diagonal, type_new):
         """Goal:
@@ -328,17 +337,38 @@ class DevelopGRN():
         """Goal:
             Get the concentrations at t + 1 of the transcription factors."""
         for TF in self.matrices.keys():
-            # B * x_{i}
-            v = np.dot(self.matrices[TF][1], self.matrices[TF][4])
-            # A, decay * (Bx_{i} + b)
-            self.matrices[TF][4] = sp.linalg.spsolve(self.matrices[TF][0], 
-                                            self.matrices[TF][3].multiply(v + self.matrices[TF][2]))
-            self.matrices[TF][4] = sp.lil_matrix(self.matrices[TF][4].reshape(-1, 1))
+            if self.store_gradients == False:
+                # B * x_{i}
+                v = np.dot(self.matrices[TF][1], self.matrices[TF][4])
+                # A, decay * (Bx_{i} + b)
+                self.matrices[TF][4] = sp.linalg.spsolve(self.matrices[TF][0], 
+                                                self.matrices[TF][3].multiply(v + self.matrices[TF][2]))
+                self.matrices[TF][4] = sp.lil_matrix(self.matrices[TF][4].reshape(-1, 1))
+            elif self.store_gradients == True:
+                # B * x_{i}
+                v = np.dot(self.matrices[TF][1], self.matrices[TF][4][:, -1])
+                # A, decay * (Bx_{i} + b)
+                newc = sp.linalg.spsolve(self.matrices[TF][0], 
+                                                self.matrices[TF][3].multiply(v + self.matrices[TF][2]))
+                self.matrices[TF][4] = np.append(self.matrices[TF][4].toarray(), newc.reshape(-1, 1), axis = 1)
+                self.matrices[TF][4] = sp.lil_matrix(self.matrices[TF][4])
 
     def develop(self) -> BodyV2:
         """Goal:
             Develops the body of the robot."""
         self = self.develop_body()
+        # Store concentrations
+        if self.store_gradients == True:
+            # Save locations
+            print(self.store_location)
+            np.savetxt('locations.csv', self.store_location, delimiter = ',')
+            # Save concentrations
+            for TF in self.matrices.keys():
+                tf_concentrations = self.matrices[TF][4].toarray()
+                # Write to file
+                np.savetxt('concentrations_' + TF + '.csv', tf_concentrations, delimiter = ',')
+            
+
         return self.phenotype_body
 
     def develop_body(self):
@@ -539,6 +569,13 @@ class DevelopGRN():
                             [None, None, None, None], None, None, 
                             forwards, Vector3([0, 0, 1]), faces)
         
+        # Store location?
+        if self.store_gradients == True:
+            # Get directions
+            for slot4analysis, coords4analysis in {2: (-1, 0), 3: (0, -1), 1: (0, 1), 0: (1, 0)}.items():
+                self.store_location.append([0, 0, slot4analysis,
+                                            coords4analysis[0], coords4analysis[1]])
+        
         return core_module
 
 
@@ -585,7 +622,11 @@ class DevelopGRN():
             for cell2 in self.cells: 
                 # Get concentrations   
                 for TF in self.matrices.keys():
-                    tfconcentrations = self.matrices[TF][4][cell2.indices].toarray().flatten()
+                    if self.store_gradients == False:
+                        tfconcentrations = self.matrices[TF][4][cell2.indices].toarray().flatten()
+                    else:
+                        tfconcentrations = self.matrices[TF][4][cell2.indices, -1].toarray().flatten()
+                    # Set concentrations?    
                     if (TF in cell2.transcription_factors.keys()) or (tfconcentrations > 0).any():
                         cell2.transcription_factors[TF] = tfconcentrations
             
@@ -719,7 +760,14 @@ class DevelopGRN():
                     #     self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 4
                     # elif type(module2add.module) == CoreV2:
                     #     self.grid[potential_module_coord[0] + self.grid_origin[0], potential_module_coord[1] + self.grid_origin[1]] = 1
-
+                    
+                    # Store location?
+                    if self.store_gradients == True:
+                        # Get directions
+                        self.store_location.append([cell.developed_module.substrate_coordinates[0],
+                                                    cell.developed_module.substrate_coordinates[1], 
+                                                    slot4coordinates,
+                                                    potential_module_coord[0], potential_module_coord[1]])
     
     def new_cell(self, source_cell, new_module, slot):
         """Goal:
