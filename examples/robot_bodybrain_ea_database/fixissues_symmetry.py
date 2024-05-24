@@ -4,6 +4,7 @@ from itertools import product
 import numpy as np
 import pandas as pd
 from revolve2.modular_robot.body.v2 import ActiveHingeV2, BrickV2
+from revolve2.modular_robot.body.base import ActiveHinge, Body, Brick
 from revolve2.modular_robot.body.base._core import Core
 from revolve2.modular_robot.body.v2._attachment_face_core_v2 import AttachmentFaceCoreV2
 import sys
@@ -79,7 +80,7 @@ def string2grid(string):
     # ---- Grid to image
     grid = create_plot(grid)
             
-    return grid, core_grid_position
+    return body, grid, core_grid_position
 
 def calculate_symmetry(grid, core_grid_position):
     # Initialize
@@ -147,6 +148,53 @@ def calculate_symmetry(grid, core_grid_position):
     return results
 
 
+def calculate_filled(bricks, active_hinges, type):
+    if type == Brick:
+        return [brick for brick in bricks
+            if all([brick.children.get(child_index) is not None
+                for child_index in brick.attachment_points.keys()])]
+    elif type == ActiveHinge:
+        return [active_hinge for active_hinge in active_hinges
+            if all([active_hinge.children.get(child_index) is not None
+                for child_index in active_hinge.attachment_points.keys()])]
+    else:
+        raise ValueError("Unknown type {}".format(type))
+
+def calculate_joints(body):
+    """Goal:
+        Get a measure for how movable the body is.
+    ----------------------------------------------------
+    Input:
+        num_modules:
+            The number of modules.
+        num_active_hinges:
+            The number of active hinges.
+    ----------------------------------------------------
+    Output:
+        Joints measurement."""
+    
+    # Get number of modules
+    bricks = body.find_modules_of_type(Brick)
+    active_hinges = body.find_modules_of_type(ActiveHinge)
+    num_modules = 1 + len(bricks) + len(active_hinges)
+
+    # ---- Calculate the maximum potential joints
+    jmax = np.floor((num_modules - 1) / 2)
+    # ---- Calculate the proportion
+    if num_modules < 3:
+        return 0
+    else:
+        # Get hinges that are fully connected, but not to other hinges
+        new_hinges = []
+        for hinge in calculate_filled(bricks, active_hinges, ActiveHinge):
+            if all([type(hinge.children.get(child_index)) != ActiveHingeV2
+                for child_index in hinge.attachment_points.keys()]) and (
+                    type(hinge.parent) != ActiveHingeV2
+                ):
+                new_hinges.append(hinge)
+
+        return len(new_hinges) / jmax
+
 
 def main():
     start_string, end_string = int(sys.argv[1]), int(sys.argv[2])
@@ -161,14 +209,15 @@ def main():
         print(istring)
 
         # Get grid
-        grid, core_grid_position = string2grid(string)
+        body, grid, core_grid_position = string2grid(string)
 
-        # Initialize
-        storage[string] = calculate_symmetry(grid, core_grid_position)
+        # # Initialize
+        # #storage[string] = calculate_symmetry(grid, core_grid_position)
+        storage[string] = calculate_joints(body)
 
         # Save data every 1000 strings
         if ((istring % 10000 == 0) and (istring != 0)) or (istring == (len(strings) - 1)):
-            pd.DataFrame.from_dict(storage, orient = "index").to_csv(f"C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\examples\\robot_bodybrain_ea_database\\symmetry_data\\symmetry_{start_string + istring}.csv")
+            pd.DataFrame.from_dict(storage, orient = "index").to_csv(f"C:\\Users\\niels\\OneDrive\\Documenten\\GitHub\\revolve2\\examples\\robot_bodybrain_ea_database\\joint_data\\joint_{start_string + istring}.csv")
             storage = {}
 
 if __name__ == "__main__":

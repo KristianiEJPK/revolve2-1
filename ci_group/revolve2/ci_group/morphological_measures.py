@@ -33,10 +33,11 @@ class MorphologicalMeasures(Generic[TModule]):
         
         # Other measures
         self.grid, self.core_grid_position, self.id_string = body.to_grid(ActiveHingeV2, BrickV2)
-        #self.create_plot(self.grid, z = 0)
-
         # Check if 2D
         assert self.__calculate_is_2d_recur(self.grid), "Body is not 2D."
+        # Convert grid to plot
+        self.grid = self.create_plot(self.grid)
+
 
     @property
     def size(self) -> float:
@@ -92,7 +93,7 @@ class MorphologicalMeasures(Generic[TModule]):
         std_max = np.sqrt(np.mean([((x - np.mean(samples)) ** 2) for x in samples]))
 
         # Get std
-        std = np.sqrt(np.mean([((x - np.mean(positions)) ** 2) for x in positions]))
+        std = np.sqrt(np.mean([((x - np.mean(positions)) ** 2) for x in positions])) 
 
         # Return the proportion
         if (std_max == 0) or (self.num_modules == 1):
@@ -353,7 +354,9 @@ class MorphologicalMeasures(Generic[TModule]):
             new_hinges = []
             for hinge in self.__calculate_filled(ActiveHinge):
                 if all([type(hinge.children.get(child_index)) != ActiveHingeV2
-                    for child_index in hinge.attachment_points.keys()]):
+                    for child_index in hinge.attachment_points.keys()]) and (
+                    type(hinge.parent) != ActiveHingeV2
+                ):
                     new_hinges.append(hinge)
 
             return len(new_hinges) / jmax
@@ -391,16 +394,71 @@ class MorphologicalMeasures(Generic[TModule]):
             * Symmetry measurements: including module type
             * Symmetry measurements: excluding module type
         """
-        # Pad the grid
-        self.__pad_grid()
-        # Get symmetry scores for both 2D planes
-        self.symmetry_xax = self.__calculate_symmetry_xax()
-        self.symmetry_yax = self.__calculate_symmetry_yax()
-        self.symmetry_diag, self.symmetry_diag_excl = self.__calculate_symmetry_diag()
+        # Initialize
+        results = []
 
+        # How much on each side from center
+        s1 = (self.grid.shape[0] - 1) - self.core_grid_position[0]
+        s2 = (self.grid.shape[1] - 1) - self.core_grid_position[1]
+        s3 = self.core_grid_position[0]
+        s4 = self.core_grid_position[1]
+
+        # Pad new grid with maximum of (s1, s2, s3, s4) at every side
+        maxside = max(s1, s2, s3, s4)
+        new_grid = np.zeros((maxside * 2 + 1 , maxside * 2 + 1))
+
+        # Place old grid with core at center
+        assert (new_grid.shape[0] - 1) % 2 == 0, "New grid should have an odd number of rows"
+        new_grid[maxside - s3:maxside - s3 + self.grid.shape[0], 
+                maxside - s4:maxside - s4 + self.grid.shape[1]] = self.grid
+
+
+        for mode in ["diag1", "diag2", "horizontal", "vertical"]:
+            if mode == "diag1":
+                # ---- Left top to right bottom diagonal
+                # Get lower and upper triangle
+                lower = np.tril(new_grid, k = -1)
+                upper = np.triu(new_grid, k = 1)
+                #upper = np.rot90(np.flipud(upper), 1).astype(int)
+                upper = np.transpose(upper)
+
+            elif mode == "diag2":
+                # ---- Left bottom to right top diagonal
+                # Get lower and upper triangle
+                new_grid = np.rot90(new_grid, -1).astype(int)
+                lower = np.rot90(np.tril(new_grid, k = -1), 1).astype(int)
+                upper = np.rot90(np.triu(new_grid, k = 1), 1).astype(int)
+                upper = np.transpose(upper)
+                upper = np.fliplr(np.flipud(upper))
+
+            elif mode == "vertical":
+                # Around vertical axis
+                upper = new_grid[0:maxside, :]
+                lower = new_grid[maxside + 1:, :]
+                upper = np.flipud(upper)
+            elif mode == "horizontal":
+                # Around horizontal axis
+                upper = new_grid[:, 0:maxside]
+                lower = new_grid[:, maxside + 1:]
+                upper = np.fliplr(upper)
+
+            # ---- Symmetry including type
+            # Get sum of lower and upper triangle
+            equality = np.logical_and((upper == lower), (upper != 0))
+            # Calculate symmetry
+            counttot = np.sum(upper > 0) + np.sum(lower > 0)
+            symmetry = np.sum(equality) * 2 / counttot
+            results.append(symmetry)
+
+            # ---- Symmetry excluding type
+            equality = np.logical_and((upper > 0), (lower > 0))
+            # Calculate symmetry
+            symmetry = np.sum(equality) * 2 / counttot
+            results.append(symmetry)
+    
         # Return the maximum symmetry score
-        incl = [self.symmetry_xax[0], self.symmetry_yax[0], self.symmetry_diag[0], self.symmetry_diag[1]]
-        excl = [self.symmetry_xax[1], self.symmetry_yax[1], self.symmetry_diag_excl[0], self.symmetry_diag_excl[1]]
+        incl = [results[0][0], results[1][0], results[2][0], results[3][0]]
+        excl = [results[0][1], results[1][1], results[2][1], results[3][1]]
 
         return incl, excl
     
@@ -616,264 +674,6 @@ class MorphologicalMeasures(Generic[TModule]):
         else:
             raise ValueError("Unknown type {}".format(type))
     
-    def __pad_grid(self) -> None:
-        """Goal:
-            Pad the grid with empty modules to create a symmetry grid.
-        ---------------------------------------------------------------------------
-        Input:
-            grid: 
-                The grid of the robot.
-        ---------------------------------------------------------------------------
-        Output:
-            The symmetry grid."""
-        # Get grid shape
-        row, col, _ = self.grid.shape
-        # Position of core
-        row_offs, col_offs, _ = self.core_grid_position
-        # Get offsets
-        row_off_top = row_offs - 1 # Minus 1 because of 3 x 3 core block
-        row_off_bottom = (self.bounding_box_depth - 1) - row_offs - 1 # e.g. 0, 1, 2, 3 --> 4 - 1 - 1 - 1 = 1
-        col_off_left = col_offs - 1
-        col_off_right = (self.bounding_box_width - 1) - col_offs - 1
-
-        # Creat empty grid
-        diff_off_row = abs(row_off_top - row_off_bottom)
-        diff_off_col = abs(col_off_left - col_off_right)
-        self.symmetry_grid = np.empty(shape = (row + diff_off_row, col + diff_off_col, 1), dtype = Module)
-        
-        # Fill with None
-        self.symmetry_grid.fill(None)
-        # Fill with grid values
-        start_row = 0 if row_off_top >= row_off_bottom else diff_off_row
-        end_row = row if row_off_top >= row_off_bottom else row + diff_off_row
-        start_col = 0 if col_off_left >= col_off_right else diff_off_col
-        end_col = col if col_off_left >= col_off_right else col + diff_off_col
-        self.symmetry_grid[start_row:end_row, start_col:end_col, [0]] = self.grid[:, :, [1]]
-
-        # Save new core position
-        self.symmetry_core_coordinates = (start_row + row_offs, start_col + col_offs) 
-
-        ## Plot?
-        #self.create_plot(self.symmetry_grid, z = -1)
-
-    def __calculate_symmetry_xax(self) -> Union[float, float]:
-        """Goal:
-            Calculate symmetry along the x-axis.
-        ----------------------------------------------------------------------------
-        Input:
-            symmetry_grid: 
-                The symmetry grid.
-            symmetry_core_coordinates:
-                The core coordinates in the symmetry grid.
-        ----------------------------------------------------------------------------
-        Output:
-            * Symmetry along the x-axis including module type
-            * Symmetry along the x-axis excluding module type."""
-        # ---- Initialize
-        num_along_plane = 0
-        num_symmetrical = 0 # Including module type
-        num_symmetrical_excl = 0 # Excluding module type
-
-        # ---- Get y position of core
-        ycore_position = self.symmetry_core_coordinates[0]
-        
-        # ---- For all coordinates
-        for x in range(0, self.symmetry_grid.shape[1]): # For all x-coordinates
-            # Check if module is present at (fixed) core y location
-            if self.symmetry_grid[ycore_position, x, 0] is not None: 
-                num_along_plane += 1
-                
-            # Check if module is symmetrical in y direction
-            for y in range(2, ycore_position + 1): # Exclude core block
-                # If module is symmetrical
-                if self.symmetry_grid[ycore_position + y, x, 0] is not None and type(
-                    self.symmetry_grid[ycore_position + y, x, 0]) is type(
-                    self.symmetry_grid[ycore_position - y, x, 0]):
-                    num_symmetrical += 2
-                if (self.symmetry_grid[ycore_position + y, x, 0] is not None) and (
-                    self.symmetry_grid[ycore_position - y, x, 0] is not None
-                ):
-                    num_symmetrical_excl += 2
-        
-        # Calculate difference between number of modules and number along plane
-        difference = (self.num_modules + 2) - num_along_plane # + 2 because of 3 x 3 core block
-
-        # Assert
-        assert num_symmetrical <= difference
-        assert num_symmetrical_excl <= difference
-        assert num_symmetrical_excl >= num_symmetrical
-
-        # Calculate the symmetry
-        symmetries = []
-        symmetries.append(num_symmetrical / difference if (difference > 0.0) else difference)
-        symmetries.append(num_symmetrical_excl / difference if (difference > 0.0) else difference)
-
-        return symmetries
-
-    def __calculate_symmetry_yax(self) -> Union[float, float]:
-        """Goal:
-            Calculate symmetry along the y-axis.
-        ----------------------------------------------------------------------------
-        Input:
-            symmetry_grid: 
-                The symmetry grid.
-            symmetry_core_coordinates:
-                The core coordinates in the symmetry grid.
-        ----------------------------------------------------------------------------
-        Output:
-            * Symmetry along the y-axis including module type
-            * Symmetry along the y-axis excluding module type."""
-        # Initialize
-        num_along_plane = 0
-        num_symmetrical = 0 # Including module type
-        num_symmetrical_excl = 0 # Excluding module type
-
-        # ---- Get x position of core
-        xcore_position = self.symmetry_core_coordinates[1]
-
-        # For all coordinates
-        for y in range(0, self.symmetry_grid.shape[0]):
-            # Check module is present at core x location
-            if self.symmetry_grid[y, xcore_position, 0] is not None:
-                num_along_plane += 1
-            # Check if module is symmetrical
-            for x in range(2, xcore_position + 1):
-                if self.symmetry_grid[y, xcore_position + x, 0] is not None and type(
-                    self.symmetry_grid[y, xcore_position + x, 0]) is type(
-                    self.symmetry_grid[y, xcore_position - x, 0]):
-                    num_symmetrical += 2
-                if (self.symmetry_grid[y, xcore_position + x, 0] is not None) and (
-                    self.symmetry_grid[y, xcore_position - x, 0] is not None
-                ):
-                    num_symmetrical_excl += 2
-
-        # Calculate difference
-        difference = (self.num_modules + 2) - num_along_plane # + 2 because of 3 x 3 core block
-
-        # Assert
-        assert num_symmetrical <= difference
-        assert num_symmetrical_excl <= difference
-        assert num_symmetrical_excl >= num_symmetrical
-
-        # Calculate the symmetry
-        symmetries = []
-        symmetries.append(num_symmetrical / difference if (difference > 0.0) else difference)
-        symmetries.append(num_symmetrical_excl / difference if (difference > 0.0) else difference)
-
-        return symmetries
-
-    def __calculate_symmetry_diag(self) -> Union[list[float], list[float]]:
-        """Goal:'
-            Calculate symmetry along the diagonals.
-        ----------------------------------------------------------------------------
-        Input:
-            symmetry_grid: 
-                The symmetry grid.
-            symmetry_core_coordinates:
-                The core coordinates in the symmetry grid.
-        ----------------------------------------------------------------------------
-        Output:
-            * Symmetry along the diagonals including module type
-            * Symmetry along the diagonals excluding module type"""
-        # ---- Initialize
-        diagsyms = [] # Including module type
-        diagsyms_excl = [] # Excluding module type
-
-        # ---- For all diagonals
-        for diag in [1, -1]: # 1 is from right to left, -1 is from left to right
-            # Initialize
-            num_along_plane = 0
-            num_symmetrical = 0 # Including module type
-            num_symmetrical_excl = 0 # Excluding module type
-        
-            # ---- Find start
-            xstart = self.symmetry_core_coordinates[1]
-            ystart = self.symmetry_core_coordinates[0]
-            while True:
-                if (((diag == 1) and ((xstart == (self.symmetry_grid.shape[1] - 1)) or (ystart == (self.symmetry_grid.shape[0] - 1))))
-                    or
-                    ((diag == -1) and ((xstart == 0) or (ystart == (self.symmetry_grid.shape[0] - 1))))):
-                    break
-                else:
-                    xstart += diag * 1 # + if from left to right!
-                    ystart -= 1
-
-            # ---- From core towards left top
-            ypos = ystart
-            xpos = xstart
-            while True:
-                if (((diag == 1) and ((xpos < 0) or (ypos < 0)))
-                    or
-                    ((diag == -1) and ((xpos >= self.symmetry_grid.shape[1]) or (ypos < 0)))):
-                    break
-                else:
-                    # Num along plane
-                    if self.symmetry_grid[ypos, xpos, 0] is not None:
-                        num_along_plane += 1
-                    # Num symmetrical
-                    ypositions = [ypos + (diag * -1), ypos + (diag * 1)] # if from right to left, -1, 1
-                    xpositions = [xpos - 1, xpos + 1]
-                    while True:
-                        if (ypositions[0] < 0) or (ypositions[1] >= self.symmetry_grid.shape[0]) or (
-                            xpositions[0] < 0) or (xpositions[1] >= self.symmetry_grid.shape[1]):
-                            break
-                        else:
-                            # Within core block?
-                            bool_core = ((xpositions[0] in [self.symmetry_core_coordinates[1] - 1, self.symmetry_core_coordinates[1], 
-                                    self.symmetry_core_coordinates[1] + 1])
-
-                                    and
-
-                                    (ypositions[0] in [self.symmetry_core_coordinates[0] - 1, self.symmetry_core_coordinates[0],
-                                                       self.symmetry_core_coordinates[0] + 1]))
-                            # Check if symmetrical
-                            if (self.symmetry_grid[ypositions[0], xpositions[0], 0] is not None) and (
-                                type(self.symmetry_grid[ypositions[0], xpositions[0], 0]) is type(
-                                    self.symmetry_grid[ypositions[1], xpositions[1], 0])):
-                                if bool_core:
-                                    pass
-                                else:
-                                    num_symmetrical += 2
-                            
-                            if (self.symmetry_grid[ypositions[0], xpositions[0], 0] is not None) and (
-                                self.symmetry_grid[ypositions[1], xpositions[1], 0] is not None):
-                                if bool_core:
-                                    pass
-                                else:
-                                    num_symmetrical_excl += 2
-
-                            # Adapt positions
-                            ypositions[0] -= (diag * 1) # - if from right to left!
-                            ypositions[1] += (diag * 1) # + if from right to left!
-                            xpositions[0] -= 1
-                            xpositions[1] += 1
-                    # Adapt positions
-                    ypos += 1
-                    xpos -= (diag * 1) # - if from right to left!
-
-            # Calculate difference
-            difference = (self.num_modules + 2) - num_along_plane # + 2 because of 3 x 3 core block
-
-            # Assert
-            assert num_symmetrical <= difference
-            assert num_symmetrical_excl <= difference
-            assert num_symmetrical_excl >= num_symmetrical
-
-            # Calculate the symmetry
-            if difference > 0.0:
-                diagsyms.append(num_symmetrical / difference)
-                diagsyms_excl.append(num_symmetrical_excl / difference)
-            else:
-                diagsyms.append(difference)
-                diagsyms_excl.append(difference)
-    
-        return diagsyms, diagsyms_excl
-
-            
-            
-
-        
-
 
     @property
     def bounding_box_depth(self) -> int:
@@ -929,7 +729,7 @@ class MorphologicalMeasures(Generic[TModule]):
         """
         return (grid.shape[2] == 3) and ((grid[:, :, 2] != None).sum() == 8) and ((grid[:, :, 0] != None).sum() == 8)
 
-    def create_plot(self, grid, z = 0, movable = None):
+    def create_plot(grid, z = 0):
         """Goal:
             Create a plot of the robot.
         -------------------------------------------------------
@@ -953,18 +753,6 @@ class MorphologicalMeasures(Generic[TModule]):
                 newgrid[x, y, z] = 1
             else:
                 newgrid[x, y, z] = 0
-                
-        # Create a custom colormap with 4 colors
-        cmap = plt.cm.colors.ListedColormap(['grey', 'red', 'white', 'blue'])
-
-        # Create a normalized color map
-        norm = plt.cm.colors.Normalize(vmin = 0, vmax = 3)
-
-        # Plot
-        plt.imshow(newgrid[:, :, z].astype(int), cmap = cmap, norm = norm)
-
-        if isinstance(movable, np.ndarray):
-            plt.scatter(movable[:, 1], movable[:, 0], c = 'black', s = 100, marker = 'o')
         
-        return plt.show()
+        return newgrid[:, :, z].astype(int)
     

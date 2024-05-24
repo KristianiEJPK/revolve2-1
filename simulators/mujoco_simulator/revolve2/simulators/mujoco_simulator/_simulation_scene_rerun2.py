@@ -23,8 +23,8 @@ import sys
 # Settings
 fps = 60
 video_directory = os.getcwd()
-pathpkl = "C:\\Users\\niels\\Downloads\\PKL"
-pathxml = "C:\\Users\\niels\\Downloads\\XML"
+pathpkl = "C:\\Users\\niels\\Downloads\\GRN_runs\\Rerun_6_2\\PKL"
+pathxml = "C:\\Users\\niels\\Downloads\\GRN_runs\\Rerun_6_2\\XML"
 
 
 # Get the directory of the current file
