@@ -45,7 +45,7 @@ class DevelopGRN():
     """
     def __init__(self, max_modules, mode_core_mult, genotype):
         # Initialize
-        self.store_gradients = True # Store gradients or not --> only for analysis, makes it slow
+        self.store_gradients = False # Store gradients or not --> only for analysis, makes it slow
         self.store_location = [] # Store location of the modules --> only for analysis, makes it slow
         self.max_modules = max_modules # Maximum number of modules
         self.genotype = genotype # Genotype

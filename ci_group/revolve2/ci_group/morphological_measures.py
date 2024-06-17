@@ -319,7 +319,7 @@ class MorphologicalMeasures(Generic[TModule]):
             # Mean length
             meanrel = np.mean(limbs) / potential_length_of_limb
             # Standard deviation
-            samples = [self.num_modules - 1] + [0] * (len(limbs) - 1)
+            samples = [self.num_modules - len(limbs)] + [1] * (len(limbs) - 1)
             std_max = np.sqrt(np.mean([((x - np.mean(samples)) ** 2) for x in samples]))
             if (std_max == 0) or (self.num_modules == 1):
                 stdrel = 0

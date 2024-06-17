@@ -41,6 +41,15 @@ class Evaluator:
             num_simulators: `num_simulators` parameter for the physics simulator.
         """
         # ---- Set the simulator.
+        # Convert the headless parameter to a boolean.
+        if type(headless) is not bool:
+            if headless == "True":
+                headless = True
+            elif headless == "False":
+                headless = False
+            else:
+                raise ValueError("headless must be either True or False")
+        # Initialize the simulator.
         self._simulator = LocalSimulator(
             headless = headless, num_simulators=num_simulators
         )

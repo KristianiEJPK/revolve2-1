@@ -345,21 +345,21 @@ class DevelopGRN():
                 # Decay transcription factors
                 for tf in cell.transcription_factors:
                     self.decay(tf, cell)
-
-                # Store concentrations?
-                if self.store_gradients == True:
-                    for tf in ["TF1", "TF2", "TF3", "TF4", "TF5"]:
-                        array2store = np.zeros(self.diffusion_sites_qt * self.max_modules)
-                        for icell, cell in enumerate(self.cells):
-                            lwb, ub = icell * self.diffusion_sites_qt, (icell + 1) * self.diffusion_sites_qt
-                            if tf in cell.transcription_factors.keys():
-                                array2store[lwb:ub] = cell.transcription_factors[tf]
-                            else:
-                                array2store[lwb:ub] = [0] * self.diffusion_sites_qt
-                        # Store concentrations
-                        array2store = array2store.reshape((-1, 1))
-                        self.store_concentrations[tf] = np.concatenate((self.store_concentrations[tf], 
-                                                    array2store), axis = 1)
+            
+            # Store concentrations?
+            if (self.store_gradients == True):
+                for tf in ["TF1", "TF2", "TF3", "TF4", "TF5"]:
+                    array2store = np.zeros(self.diffusion_sites_qt * self.max_modules)
+                    for icell, cell in enumerate(self.cells):
+                        lwb, ub = icell * self.diffusion_sites_qt, (icell + 1) * self.diffusion_sites_qt
+                        if tf in cell.transcription_factors.keys():
+                            array2store[lwb:ub] = cell.transcription_factors[tf]
+                        else:
+                            array2store[lwb:ub] = [0] * self.diffusion_sites_qt
+                    # Store concentrations
+                    array2store = array2store.reshape((-1, 1))
+                    self.store_concentrations[tf] = np.concatenate((self.store_concentrations[tf], 
+                                                array2store), axis = 1)
                 
                 # Early stopping
                 if self.quantity_modules >= self.max_modules:
