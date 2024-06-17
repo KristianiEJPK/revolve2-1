@@ -19,7 +19,7 @@ Here, we can find files to analyze data: <br />
 * analyze_evolved_bodies: Jupyter Notebook to analyze morphological and behavioral traits. <br />
 
 And the main file and rerun files:<br />
-* main <br />
+* main: Main file. run with arguments "algo" "mode" "file_name" "bool indicating continue on old database or not". algo is either CPPN, GRN or GRN_system (mrGRN), mode is either random search or evolution and file_name is as name.sqlite <br />
 * rerun <br />
 
 
