@@ -10,7 +10,7 @@ The dataset covers the morphological measures and fitness of Random Search and E
 
 The related data can be found here: https://www.kaggle.com/datasets/nielsss999/master-thesis-data/data <br />
 
-**Explanation of Code**
+**Explanation of Code** <br />
 The main files of the thesis are in revolve2//examples//robot_bodybrain_ea_database. <br />
 
 Here, we can find files to analyze data: <br />
