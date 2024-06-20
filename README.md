@@ -22,6 +22,9 @@ The main files of the thesis are in revolve2//examples//robot_bodybrain_ea_datab
 Random Body Generator: <br />
 * create_random_bodies <br />
 
+Gradient Experiments: <br />
+* tryout4gradients: Jupyter Notebook to play with gradients to see what is happening with different configurations <br />
+
 Here, we can find files to analyze data: <br />
 * analyze_behavioral: Jupyter Notebook to directly plot boxplots from the .sqlite databases. Used for the boxplots in the thesis. <br />
 * analyze_concentrations: Jupyter Notebook to create the GIFs of the concentrations.  <br />
