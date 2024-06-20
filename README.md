@@ -36,6 +36,6 @@ And the main file and rerun files: <br />
 
 And files to develop the morphology from strings: <br />
 * get_morphology: Get morphology from strings in .sqlite database. run with arguments "algo" "mode" "file_name" "Experiment id to start with" "Population number to start with" "Number of experiments" "Number of Populations" <br />
-* get_morphology_based_on_string: Same as previous, but now loads strings from a json file. <br />
+* get_morphology_based_on_string: Same as previous, but now loads strings from a json file. Those files were used to redevelop the random bodies. <br />
 
 
