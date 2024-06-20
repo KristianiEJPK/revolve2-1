@@ -32,7 +32,7 @@ Here, we can find files to analyze data: <br />
 
 And the main file and rerun files: <br />
 * main: Main file. run with arguments "algo" "mode" "file_name" "bool indicating continue on old database or not". algo is either CPPN, GRN or GRN_system (mrGRN), mode is either random search or evolution and file_name is as name.sqlite <br />
-* rerun <br />
+* rerun: File to rerun experiments. run with arguments "algo" "mode" "file_name" "bool indicating headless or not" "bool indicating write files or not" "bool indicating write videos or not" <br />
 
 And files to develop the morphology from strings: <br />
 * get_morphology: Get morphology from strings in .sqlite database. run with arguments "algo" "mode" "file_name" "Experiment id to start with" "Population number to start with" "Number of experiments" "Number of Populations" <br />
