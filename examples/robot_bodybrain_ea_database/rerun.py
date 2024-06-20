@@ -79,9 +79,9 @@ def main() -> None:
             .join_from(Generation, Population, Generation.population_id == Population.id)
             .join_from(Population, Individual, Population.id == Individual.population_id)
             .join_from(Individual, Genotype, Individual.genotype_id == Genotype.id)
-            .where(Experiment.id.label("experiment_id") == int(sys.argv[7]))
             .order_by(Individual.fitness.desc()).limit(1000)
-        ).all()
+        ).all() # Individual.body_id where(Experiment.id.label("experiment_id") == int(sys.argv[7]))
+
     
     # highest = 0
     # for irow, row in enumerate(rows):
@@ -92,7 +92,8 @@ def main() -> None:
     #         if (irow != 0) and (row[7] % 2 != 0):
     #             break
 
-    for irow, row in enumerate(rows[0:1]):
+    # Rerun
+    for irow, row in enumerate(rows[61:]): # 30, 60, 61
         genotype = row[0]
         fitness = row[1]
         energy_used = row[2]
@@ -125,9 +126,9 @@ def main() -> None:
 
         # Create the evaluator.
         evaluator = Evaluator(headless = headless, num_simulators = 1, terrain = config.TERRAIN, fitness_function = config.FITNESS_FUNCTION,
-                              simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY,
-                              simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY,
-                              writefiles = writefiles, record = writevideos, video_path = os.getcwd() + f"/MuJoCo_videos/MuJoCo_{irow}")
+                            simulation_time = config.SIMULATION_TIME, sampling_frequency = config.SAMPLING_FREQUENCY,
+                            simulation_timestep = config.SIMULATION_TIMESTEP, control_frequency = config.CONTROL_FREQUENCY,
+                            writefiles = writefiles, record = writevideos, video_path = os.getcwd() + f"/MuJoCo_videos/MuJoCo_{irow}")
 
         # Show the robot.
         fitnesses, behavioral_measures, ids = evaluator.evaluate([modular_robot])

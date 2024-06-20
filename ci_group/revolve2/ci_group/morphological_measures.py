@@ -36,7 +36,7 @@ class MorphologicalMeasures(Generic[TModule]):
         # Check if 2D
         assert self.__calculate_is_2d_recur(self.grid), "Body is not 2D."
         # Convert grid to plot
-        self.grid = self.create_plot(self.grid)
+        self.grid = self.create_plot
 
 
     @property
@@ -457,8 +457,8 @@ class MorphologicalMeasures(Generic[TModule]):
             results.append(symmetry)
     
         # Return the maximum symmetry score
-        incl = [results[0][0], results[1][0], results[2][0], results[3][0]]
-        excl = [results[0][1], results[1][1], results[2][1], results[3][1]]
+        incl = [results[0], results[2], results[4], results[6]]
+        excl = [results[1], results[3], results[5], results[7]]
 
         return incl, excl
     
@@ -532,15 +532,15 @@ class MorphologicalMeasures(Generic[TModule]):
             and the actual surface area of the robot."""
 
         # Get the valid values
-        valid_values = [tuple(arg) for arg in np.argwhere(self.grid[:, :, [1]] != None)]
+        valid_values = [tuple(arg) for arg in np.argwhere(self.grid[:, :] != None)]
 
         # Get the surface area
         surf = 0
         for valid in valid_values:
-            xnext = tuple(valid + np.array([1, 0, 0]))
-            xback = tuple(valid + np.array([-1, 0, 0]))
-            ynext = tuple(valid + np.array([0, 1, 0]))
-            yback = tuple(valid + np.array([0, -1, 0]))
+            xnext = tuple(valid + np.array([1, 0]))
+            xback = tuple(valid + np.array([-1, 0]))
+            ynext = tuple(valid + np.array([0, 1]))
+            yback = tuple(valid + np.array([0, -1]))
             # Top and Bottom
             surf += 2
             # X forward
@@ -729,7 +729,9 @@ class MorphologicalMeasures(Generic[TModule]):
         """
         return (grid.shape[2] == 3) and ((grid[:, :, 2] != None).sum() == 8) and ((grid[:, :, 0] != None).sum() == 8)
 
-    def create_plot(grid, z = 0):
+    
+    @property
+    def create_plot(self, z = 0):
         """Goal:
             Create a plot of the robot.
         -------------------------------------------------------
@@ -739,6 +741,7 @@ class MorphologicalMeasures(Generic[TModule]):
         Output:
             A plot of the robot."""
         # Create a copy
+        grid = self.grid
         newgrid = deepcopy(grid)
         
         # Fill the new grid

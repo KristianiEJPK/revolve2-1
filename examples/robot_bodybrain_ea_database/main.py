@@ -563,5 +563,5 @@ def main() -> None:
             run_experiment(dbengine, iexp)
 
 if __name__ == "__main__":
-    # run with arguments <algo> <mode> <file_name> !!!
+    # run with arguments <algo> <mode> <file_name> <bool indicating continue on old database or not> !!!
     main()
