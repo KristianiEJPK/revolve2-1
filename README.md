@@ -1,6 +1,6 @@
 **Code belonging to a Master Thesis:** <br />
 
-  "Towards Biologically Plausible Representations in the Evolution of Artificial Creatures"<br />
+  "Towards Biologically Plausible Encodings in the Evolution of Artificial Creatures"<br />
 
 The dataset covers the morphological measures and fitness of Random Search and Evolution Experiments. The experiments are repeated for three encodings: <br />
 
