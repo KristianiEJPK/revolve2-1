@@ -241,7 +241,7 @@ def scene_to_model(
         for heightmap in heightmap_geometries:
             env_mjcf.asset.add(
                 "hfield",
-                name=f"hfield_{i_heightmap}",
+                name=f"hfield_{mbs_i}_{i_heightmap}",
                 nrow=len(heightmap.heights),
                 ncol=len(heightmap.heights[0]),
                 size=[
@@ -252,7 +252,7 @@ def scene_to_model(
                 ],
             )
 
-            name = f"heightmap_{i_heightmap}"
+            name = f"heightmap_{mbs_i}_{i_heightmap}"
             hm_kwargs: dict[str, Any] = {}
             if fast_sim:
                 hm_kwargs[
@@ -265,7 +265,7 @@ def scene_to_model(
             env_mjcf.worldbody.add(
                 "geom",
                 type="hfield",
-                hfield=f"hfield_{i_heightmap}",
+                hfield=f"hfield_{mbs_i}_{i_heightmap}",
                 pos=[
                     heightmap.pose.position.x,
                     heightmap.pose.position.y,
@@ -376,3 +376,4 @@ def __make_material(env: mjcf.RootElement, name: str, element: Geometry) -> None
         shininess=element.texture.shininess,
         reflectance=element.texture.reflectance,
     )
+

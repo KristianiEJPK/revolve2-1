@@ -1,7 +1,7 @@
 """Standard terrains."""
 
 import math
-
+from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 from noise import pnoise2
@@ -9,9 +9,15 @@ from pyrr import Quaternion, Vector3
 
 from revolve2.modular_robot_simulation import Terrain
 from revolve2.simulation.scene import Pose
+from revolve2.simulation.scene import Pose
 from revolve2.simulation.scene.geometry import GeometryHeightmap, GeometryPlane
 from revolve2.simulation.scene.vector2 import Vector2
 
+@dataclass
+class Size:
+    x: float
+    y: float
+    z: float
 
 def flat(size: Vector2 = Vector2([20.0, 20.0])) -> Terrain:
     """
@@ -46,6 +52,76 @@ def tilted_flat(size: Vector2 = Vector2([20.0, 20.0]), z: float = 0) -> Terrain:
             )
         ]
     )
+
+
+class WaterTerrain:
+    def __init__(self, grid_size=(50, 50), wave_speed=1.0, damping=0.99, time_step=0.01, fluid_density=1000):
+        self.grid_size = grid_size
+        self.wave_speed = wave_speed
+        self.damping = damping
+        self.time_step = time_step
+        self.fluid_density = fluid_density
+
+        self.water_depth = np.zeros(grid_size)
+        self.velocity = np.zeros(grid_size)
+        self.wave_center = (grid_size[0] // 2, grid_size[1] // 2)
+        self.water_depth[self.wave_center] = 1
+
+    def update_water(self):
+        new_depth = self.water_depth.copy()
+        new_velocity = self.velocity.copy()
+
+        for i in range(1, self.water_depth.shape[0] - 1):
+            for j in range(1, self.water_depth.shape[1] - 1):
+                laplacian = (
+                    self.water_depth[i-1, j] + self.water_depth[i+1, j] +
+                    self.water_depth[i, j-1] + self.water_depth[i, j+1] - 4 * self.water_depth[i, j]
+                )
+                new_velocity[i, j] += self.wave_speed * laplacian * self.time_step
+                new_velocity[i, j] *= self.damping
+
+        new_depth += new_velocity * self.time_step
+        self.water_depth, self.velocity = new_depth, new_velocity
+
+    def compute_buoyancy(self, body_pos, body_volume, water_level):
+        if body_pos[2] < water_level:
+            submerged_volume = body_volume * (water_level - body_pos[2]) / body_volume
+            buoyant_force = self.fluid_density * submerged_volume * 9.81
+            return buoyant_force
+        return 0
+
+    def compute_drag(self, body_velocity, drag_coefficient, body_area):
+        drag_force = 0.5 * self.fluid_density * drag_coefficient * body_area * body_velocity**2
+        return drag_force
+
+    def create_terrain(self):
+        for _ in range(200):
+            self.update_water()
+
+        heightmap = self.water_depth
+
+        terrain = Terrain(
+            static_geometry=[
+                GeometryHeightmap(
+                    pose=Pose(),
+                    mass=0.0,
+                    size=Vector3([20.0, 20.0, 1.0]),
+                    base_thickness=0.1,
+                    heights=heightmap
+                )
+            ]
+        )
+        return terrain
+    
+def water(size: Vector2 = Vector2([20.0, 20.0])) -> Terrain:
+    """
+    Create a water terrain.
+
+    :param size: Size of the water terrain.
+    :returns: The created terrain.
+    """
+    water_terrain = WaterTerrain(grid_size=(int(size[0]), int(size[1])))
+    return water_terrain.create_terrain()
 
 
 def crater(
