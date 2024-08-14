@@ -283,8 +283,8 @@ def run_experiment(dbengine: Engine, iexp: int) -> None:
     session.add(experiment)
     session.commit()
 
-    terrains_sequence = ["tilted", "flat", "water"] #["flat"] #["hill", "water", "flat"] #["water", "flat", "hill"] #["flat", "hill", "water"]
-    generations_per_terrain = 20
+    terrains_sequence = ["tilted"] #["tilted", "flat", "water"] #["flat"] #["hill", "water", "flat"] #["water", "flat", "hill"] #["flat", "hill", "water"]
+    generations_per_terrain = 60
 
     # Initialize a single generation index
     generation_index = 0
