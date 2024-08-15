@@ -26,7 +26,7 @@ elif os.environ["ALGORITHM"] == "CPPN":
 else:
     raise ValueError("ALGORITHM must be either GRN or CPPN")
 
-TERRAIN = "flat" # "tilted
+TERRAIN = "water" # "tilted
 FITNESS_FUNCTION = "directional_speed" #"directional_displacement" #"x_speed_Miras2021" # "x_efficiency"# "xy_displacement"
 
 
