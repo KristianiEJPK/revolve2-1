@@ -1,8 +1,8 @@
 **This code is for the Bachelor Thesis:** <br />
+
   "EMERGENT ROBOT TRAITS IN CHANGING ENVIRONMENTS DEPEND ON ENCODING PROPERTIES"<br />
 
-The code is forked from Nielssss99/revolve2 for Niels' Master Thesis:** <br />
-
+The code is forked from Nielssss99/revolve2 for Niels' Master Thesis: <br />
   "Towards Biologically Plausible Encodings in the Evolution of Artificial Creatures"<br />
 
 The dataset consists of the behavioural and morphological measures. The experiments consist of three changing terrains and repeated for two encodings: <br />
